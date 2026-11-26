@@ -12,8 +12,8 @@ Hire a ready-made team, ask for something in plain language, watch the agents wo
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
-![MCP](https://img.shields.io/badge/MCP-tools-5B4CF0)
-![i18n](https://img.shields.io/badge/i18n-pt--BR%20%7C%20en-0E8A6A)
+![MCP](https://img.shields.io/badge/MCP-tools-5B4CF0?style=flat)
+![i18n](https://img.shields.io/badge/i18n-en%20%7C%20pt--BR-0E8A6A?style=flat)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 [Features](#features) · [Architecture](#architecture) · [Engineering decisions](#engineering-decisions) · [Quick start](#quick-start) · [Docs](#documentation)
