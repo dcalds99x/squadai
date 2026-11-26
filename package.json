@@ -1,0 +1,32 @@
+{
+  "name": "squadai",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted office of humanized AI agent teams.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck && tsc -p scripts/tsconfig.json",
+    "test": "turbo run test",
+    "lint": "biome ci .",
+    "format": "biome check --write .",
+    "catalog:generate": "pnpm --filter @squadai/catalog generate",
+    "catalog:check": "pnpm --filter @squadai/catalog check",
+    "db:up": "docker compose up -d postgres",
+    "db:generate": "pnpm --filter @squadai/db generate",
+    "db:migrate": "pnpm --filter @squadai/db migrate",
+    "screenshots": "node scripts/screenshots.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.9",
+    "@types/node": "^24.0.0",
+    "playwright-core": "^1.65.1",
+    "turbo": "^2.11.13",
+    "typescript": "~5.9.3"
+  }
+}

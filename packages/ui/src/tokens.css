@@ -1,0 +1,28 @@
+/* Aurora design tokens, as Tailwind v4 theme variables. */
+@theme {
+  --color-ink: #1b1d2a;
+  --color-ink-2: #33374a;
+  --color-muted: #4a4f66;
+  --color-subtle: #5a5f78;
+  --color-line: #e4e6f0;
+  --color-line-strong: #d9dcea;
+  --color-canvas: #f4f5fa;
+  --color-surface: #ffffff;
+
+  --color-brand: #5b4cf0;
+  --color-brand-strong: #3b2fc4;
+  --color-brand-soft: #eceafe;
+  --color-brand-wash: #f3f1ff;
+
+  --color-ok: #0e6b4c;
+  --color-ok-soft: #dcf5e8;
+  --color-warn: #8a3b00;
+  --color-warn-soft: #fff4e5;
+  --color-warn-line: #ffd9a8;
+  --color-danger: #a61b1b;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+
+  --radius-card: 18px;
+}

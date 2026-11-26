@@ -1,0 +1,24 @@
+{
+  "name": "@squadai/providers",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.128",
+    "@ai-sdk/openai": "^4.0.125",
+    "@ai-sdk/openai-compatible": "^3.0.96",
+    "@anthropic-ai/sdk": "^1.14.0",
+    "@squadai/core": "workspace:*",
+    "ai": "^7.0.183"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.2"
+  }
+}

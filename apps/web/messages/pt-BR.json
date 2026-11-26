@@ -1,0 +1,495 @@
+{
+  "metadata": {
+    "description": "Um escritório de times de agentes de IA que trabalham com você."
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "save": "Salvar",
+    "saving": "Salvando…",
+    "sending": "Enviando…",
+    "testing": "Testando…",
+    "testAndSave": "Testar e salvar",
+    "connect": "Conectar",
+    "connected": "Conectado",
+    "remove": "Remover",
+    "removing": "Removendo…",
+    "system": "Sistema",
+    "live": "ao vivo",
+    "reconnecting": "reconectando…",
+    "seconds": "{seconds} s"
+  },
+  "language": {
+    "label": "Idioma",
+    "saved": "Idioma salvo."
+  },
+  "nav": {
+    "newRequest": "Novo pedido",
+    "main": "Principal",
+    "home": "Início",
+    "waiting": "Esperando você",
+    "teams": "Times",
+    "hire": "+ Contratar um time",
+    "models": "Modelos e custos",
+    "integrations": "Integrações",
+    "audit": "Auditoria",
+    "signOut": "Sair"
+  },
+  "status": {
+    "in_progress": "Em produção",
+    "awaiting_approval": "Esperando você",
+    "delivered": "Entregue",
+    "cancelled": "Cancelada",
+    "failed": "Travou"
+  },
+  "presence": {
+    "working": "trabalhando",
+    "thinking": "pensando",
+    "free": "livre"
+  },
+  "tiers": {
+    "economy": "Econômico",
+    "balanced": "Equilibrado",
+    "max": "Máxima qualidade"
+  },
+  "styles": {
+    "precise": "Mais preciso",
+    "balanced": "Equilibrado",
+    "creative": "Mais criativo"
+  },
+  "policies": {
+    "allow": "Pode",
+    "ask": "Pede antes",
+    "deny": "Não pode"
+  },
+  "tools": {
+    "labels": {
+      "web_search": "Pesquisar na internet",
+      "github_read": "Ler o GitHub",
+      "github_comment": "Comentar no GitHub",
+      "request_help": "Pedir ajuda a outro time",
+      "github_merge": "Fazer merge no GitHub"
+    },
+    "unavailable": {
+      "web_search": "Conecte a Anthropic em Modelos e custos para pesquisar na web.",
+      "github_read": "Indisponível no momento.",
+      "github_comment": "Conecte o GitHub em Integrações para comentar.",
+      "request_help": "Contrate outro time para que eles possam se ajudar.",
+      "github_merge": "Por segurança, squadai não faz merge."
+    },
+    "mcp": "{server}: {tool}"
+  },
+  "home": {
+    "greeting": {
+      "morning": "Bom dia, {name}",
+      "afternoon": "Boa tarde, {name}",
+      "evening": "Boa noite, {name}"
+    },
+    "demoMode": "modo demonstração",
+    "pulse": "Pulso da semana",
+    "delivered": {
+      "label": "Entregas · 7 dias",
+      "hint": "Entregas aprovadas nos últimos 7 dias. A barra mais escura é hoje.",
+      "chart": "Entregas por dia: {values}"
+    },
+    "firstPass": {
+      "label": "De primeira",
+      "hint": "Das entregas desta semana, quantas você aprovou sem pedir ajuste.",
+      "ring": "Aprovadas de primeira"
+    },
+    "timeSaved": {
+      "label": "Tempo devolvido",
+      "hint": "Quanto tempo uma pessoa levaria para fazer as entregas desta semana."
+    },
+    "spend": {
+      "label": "Gasto no mês",
+      "noLimit": "Sem limite definido.",
+      "limit": "Limite de {limit} por mês.",
+      "meter": "Uso do orçamento"
+    },
+    "attention": "Precisa de atenção",
+    "allClear": "Tudo em dia. Nada esperando você.",
+    "alerts": {
+      "deliveries": "<strong>{count}</strong> {count, plural, one {entrega espera} other {entregas esperam}} sua aprovação",
+      "age": " · há {age}",
+      "review": "Revisar",
+      "tools": "<strong>{count}</strong> {count, plural, one {agente pede} other {agentes pedem}} permissão para usar uma ferramenta",
+      "decide": "Decidir",
+      "failed": "<strong>{team}</strong> travou",
+      "unknownError": "erro desconhecido",
+      "view": "Ver",
+      "budget": "Orçamento do mês em <strong>{percent}</strong>",
+      "adjust": "Ajustar",
+      "noModels": "Nenhum modelo de IA conectado",
+      "handoff": "<strong>{from}</strong> espera uma resposta de <strong>{to}</strong>"
+    },
+    "teams": "Seus times",
+    "hire": "+ Contratar",
+    "teamStatus": {
+      "waiting": "Esperando você",
+      "working": "Trabalhando",
+      "free": "Livre"
+    },
+    "teamStats": "Entregas em 7 dias · aprovadas de primeira",
+    "activity": "Acabou de acontecer",
+    "activityEmpty": "Quando os times começarem a trabalhar, você acompanha por aqui."
+  },
+  "team": {
+    "fallbackTitle": "Time",
+    "people": "Pessoas do time",
+    "working": "trabalhando",
+    "newRequest": "Novo pedido",
+    "placeholder": "O que o time {team} pode fazer por você?",
+    "deliveries": "Entregas",
+    "columns": {
+      "inProgress": "Em produção",
+      "inProgressEmpty": "Quando você fizer um pedido, ele aparece aqui.",
+      "review": "Para você revisar",
+      "reviewEmpty": "Nada para revisar.",
+      "delivered": "Entregues",
+      "deliveredEmpty": "As entregas aprovadas ficam guardadas aqui."
+    },
+    "versions": "{count, plural, one {# versão} other {# versões}}",
+    "stuck": "O time travou.",
+    "state": {
+      "waiting": "Esperando sua aprovação",
+      "firstPass": "Aprovado de primeira",
+      "afterChanges": "Aprovado após {count, plural, one {# ajuste} other {# ajustes}}",
+      "queued": "Na fila",
+      "working": "O time está trabalhando"
+    },
+    "retrying": "Tentando…",
+    "retry": "Tentar de novo",
+    "howWeWork": "Como trabalhamos",
+    "youApprove": "Você aprova"
+  },
+  "room": {
+    "label": "Sala do time",
+    "people": "{count, plural, one {# pessoa} other {# pessoas}}",
+    "working": " · {names} trabalhando",
+    "open": "Abrir",
+    "teamFallback": "Time",
+    "incoming": "Pedido de outro time",
+    "between": "Entre times",
+    "composerLabel": "Mensagem para a sala",
+    "composerPlaceholder": "Fale com o time…",
+    "send": "Enviar",
+    "mentionHint": "Use @ para chamar alguém.",
+    "mentionHintExample": "Use @ para chamar alguém, como @{example}."
+  },
+  "delivery": {
+    "fallbackTitle": "Entrega",
+    "fileName": "entrega",
+    "free": "sem custo",
+    "versions": "Versões",
+    "prompt": "O que você pediu",
+    "text": "Texto da entrega",
+    "notes": "Notas da revisão",
+    "inProgress": "O time ainda está trabalhando. O texto aparece aqui assim que a primeira versão ficar pronta.",
+    "reviewerFallback": "o time",
+    "delivered": "<strong>Entregue.</strong> {count, plural, =0 {Aprovado de primeira.} one {Aprovado depois de # ajuste.} other {Aprovado depois de # ajustes.}}",
+    "backstage": "Bastidores da entrega",
+    "credits": "Quem fez",
+    "nobody": "Ninguém começou ainda.",
+    "totalCost": "Custo desta entrega",
+    "thread": "Conversa sobre esta entrega",
+    "download": "Baixar .md",
+    "toNotion": "Enviar ao Notion",
+    "openNotion": "Abrir no Notion ↗"
+  },
+  "decision": {
+    "label": "Sua decisão",
+    "prompt": "<strong>Gostou?</strong> <muted>Aprove para entregar, ou diga o que mudar com suas palavras.</muted>",
+    "requestChanges": "Pedir ajuste",
+    "approving": "Aprovando…",
+    "approve": "Aprovar e entregar",
+    "whatToChange": "O que você quer mudar?",
+    "placeholder": "Ex.: deixa a introdução mais curta e coloca um exemplo de conta de luz",
+    "quick": {
+      "shorter": "Mais curto",
+      "formal": "Tom mais formal",
+      "example": "Adicionar um exemplo",
+      "title": "Título mais chamativo"
+    },
+    "sendTo": "Enviar para {name}",
+    "relay": "{name} repassa para quem fez a parte que você quer mudar."
+  },
+  "waiting": {
+    "title": "Esperando você",
+    "allClear": "Tudo em dia.",
+    "count": "{count, plural, one {# item precisa} other {# itens precisam}} da sua decisão para seguir.",
+    "empty": "Nada esperando você agora.",
+    "agentFallback": "Um agente",
+    "wantsTool": "<strong>{agent}</strong> quer usar <strong>{tool}</strong>",
+    "toolContext": "{team} · para “{title}” · há {age}",
+    "deliveryContext": "{team} · {kind} · esperando há {age}",
+    "review": "Revisar",
+    "deny": "Não permitir",
+    "allow": "Permitir"
+  },
+  "requestForm": {
+    "placeholder": "Descreva do jeito que você falaria com um colega. Ex.: um artigo sobre energia solar para donos de casa, tom leve.",
+    "noTeams": "Contrate um time para fazer o primeiro pedido.",
+    "whatYouNeed": "O que você precisa?",
+    "team": "Time",
+    "kind": "Tipo de entrega",
+    "submit": "Pedir ao time"
+  },
+  "newRequest": {
+    "title": "Novo pedido",
+    "intro": "Descreva o que você precisa. A gente sugere o time certo.",
+    "placeholder": "Ex.: um artigo sobre energia solar para donos de casa, tom leve",
+    "searching": "Procurando o time certo…",
+    "options": "Quem pode fazer",
+    "empty": "Sugestões aparecem aqui",
+    "suggested": "sugerido",
+    "askTeam": "Pedir para {team}",
+    "ask": "Pedir"
+  },
+  "hire": {
+    "title": "Contratar um time",
+    "intro": "Cada time chega pronto: pessoas com papéis definidos e um jeito de trabalhar. Depois você ajusta o que quiser.",
+    "hired": "Já no escritório",
+    "delivers": "Sabe entregar",
+    "askManager": "Peça para quem administra o escritório contratar.",
+    "hiring": "Contratando…",
+    "again": "Contratar outra equipe igual",
+    "hireThis": "Contratar este time"
+  },
+  "agent": {
+    "fallbackTitle": "Agente",
+    "roleOnTeam": "{role} no time {team}",
+    "workingOn": "Trabalhando agora em “{title}”",
+    "free": "Livre",
+    "stats": "Números do mês",
+    "delivered": "Entregas aprovadas",
+    "deliveredNote": "em que participou",
+    "firstPass": "Aprovadas de primeira",
+    "firstPassNote": "sem pedido de ajuste",
+    "avgTime": "Tempo médio por tarefa",
+    "avgTimeNote": "neste mês",
+    "cost": "Custo no mês",
+    "costNote": "{count, plural, one {# chamada} other {# chamadas}} ao modelo",
+    "howTheyWork": "Jeito de trabalhar",
+    "goodAt": "Bom em",
+    "prefers": "Gosta de receber",
+    "never": "Nunca faz",
+    "recent": "Entregas recentes",
+    "noRecent": "Ainda não participou de nenhuma entrega.",
+    "canDo": "O que {name} pode fazer",
+    "canDoIntro": "Como num emprego: cada um com seu nível de acesso.",
+    "policyHelp": "“Pede antes” pausa o trabalho até você permitir em Esperando você. Ferramentas novas de integrações começam como “Não pode”.",
+    "brain": {
+      "title": "Cérebro",
+      "intro": "O modelo de IA que {name} usa para pensar.",
+      "profile": "Perfil",
+      "uses": "Usa <strong>{primary}</strong>, a menos que o escritório tenha mudado o padrão em Modelos e custos.",
+      "usesWithFallback": "Usa <strong>{primary}</strong> e, se ele falhar, <strong>{fallback}</strong>, a menos que o escritório tenha mudado o padrão em Modelos e custos.",
+      "style": "Estilo",
+      "hideCustom": "Esconder modelo personalizado",
+      "useCustom": "Usar um modelo específico",
+      "primary": "Modelo principal",
+      "primaryPlaceholder": "ex.: anthropic:claude-sonnet-5-5",
+      "fallback": "Plano B, se o principal falhar",
+      "fallbackPlaceholder": "ex.: ollama:llama3",
+      "instructions": "Instruções e personalidade"
+    }
+  },
+  "models": {
+    "title": "Modelos e custos",
+    "intro": "Conecte as contas de IA que você já tem. As chaves ficam guardadas só no seu servidor, criptografadas, e você paga direto ao provedor.",
+    "providers": "Provedores",
+    "providerInfo": {
+      "anthropic": "Claude Opus, Sonnet e Haiku",
+      "openai": "Modelos GPT",
+      "google": "Modelos Gemini",
+      "openrouter": "Centenas de modelos com uma chave",
+      "ollama": "Modelos locais, sem custo por uso",
+      "openai-compatible": "Qualquer API compatível com OpenAI"
+    },
+    "otherProvider": "Outro provedor",
+    "tiersTitle": "Modelos por perfil",
+    "tiersIntro": "Cada agente tem um perfil. Aqui você escolhe qual modelo cada perfil usa, no formato provedor:modelo.",
+    "budget": "Orçamento do mês",
+    "noLimit": "sem limite definido",
+    "ofLimit": "de {limit}",
+    "budgetNote": "Calculado em dólares, pelo preço público de cada modelo. Ao atingir o limite, os times param até você aumentá-lo.",
+    "spendByTeam": "Gasto por time neste mês",
+    "noCalls": "Nenhuma chamada a modelos ainda.",
+    "calls": "{count, plural, one {# chamada} other {# chamadas}}",
+    "demo": {
+      "title": "Modo demonstração",
+      "body": "Os agentes respondem com textos de exemplo, sem chave e sem custo. Bom para conhecer o fluxo. Desligue quando conectar um provedor de verdade."
+    },
+    "workspaceLanguage": {
+      "title": "Idioma do escritório",
+      "body": "A língua em que os agentes conversam na sala, escrevem as entregas e recebem as instruções. Times contratados depois da mudança chegam nesse idioma; os que já estão aqui mantêm o perfil que têm."
+    },
+    "notConnected": "Não conectado",
+    "keyHint": "Chave {hint}",
+    "noKey": "Sem chave",
+    "changeKey": "Trocar chave",
+    "apiKey": "Chave de API",
+    "optional": " (opcional)",
+    "keyPlaceholder": "Cole sua chave aqui",
+    "baseUrl": "URL base",
+    "keyNote": "Testamos a chave antes de salvar. Ela nunca volta para o navegador.",
+    "profile": "Perfil",
+    "primary": "Modelo principal",
+    "fallback": "Plano B",
+    "primaryLabel": "Modelo principal do perfil {tier}",
+    "fallbackLabel": "Plano B do perfil {tier}",
+    "none": "nenhum",
+    "saveModels": "Salvar modelos",
+    "monthlyLimit": "Limite mensal (US$)",
+    "noLimitPlaceholder": "sem limite"
+  },
+  "integrations": {
+    "title": "Integrações",
+    "intro": "Os sistemas que os agentes podem usar. Cada ferramenta nova começa bloqueada; você libera por agente, no perfil dele.",
+    "github": "Ler pull requests privados e comentar neles.",
+    "notion": "Exportar entregas aprovadas para uma página.",
+    "mcpTitle": "Servidores MCP",
+    "mcpIntro": "Conecte qualquer sistema que fale MCP: CRM, banco de dados interno, Jira, Slack… As ferramentas dele aparecem no perfil de cada agente.",
+    "mcpTools": "{count, plural, one {# ferramenta} other {# ferramentas}}: {names}",
+    "newMcp": "Novo servidor MCP",
+    "newMcpSubtitle": "URL do endpoint Streamable HTTP.",
+    "off": "Desligado",
+    "update": "Atualizar",
+    "changeToken": "Trocar token",
+    "name": "Nome",
+    "namePlaceholder": "ex.: crm",
+    "url": "URL",
+    "tokenOptional": "Token (opcional)",
+    "githubToken": "Token de acesso pessoal",
+    "notionToken": "Token da integração",
+    "notionPage": "Página onde salvar (link ou ID)",
+    "note": "Testamos antes de salvar. O token fica criptografado no servidor."
+  },
+  "audit": {
+    "title": "Auditoria",
+    "intro": "Tudo o que mudou no escritório e quem mudou. Os 200 registros mais recentes.",
+    "when": "Quando",
+    "who": "Quem",
+    "what": "O quê",
+    "detail": "Detalhe",
+    "actions": {
+      "workspace": {
+        "created": "criou o escritório",
+        "locale_changed": "mudou o idioma do escritório"
+      },
+      "team": {
+        "hired": "contratou um time"
+      },
+      "request": {
+        "created": "fez um pedido"
+      },
+      "delivery": {
+        "approved": "aprovou uma entrega",
+        "changes_requested": "pediu ajuste em uma entrega",
+        "exported": "exportou uma entrega"
+      },
+      "agent": {
+        "updated": "mudou o cérebro ou as instruções de um agente",
+        "tool_policy_changed": "mudou uma permissão"
+      },
+      "tool": {
+        "allowed": "permitiu o uso de uma ferramenta",
+        "refused": "recusou o uso de uma ferramenta"
+      },
+      "provider": {
+        "connected": "conectou um provedor de IA",
+        "removed": "removeu um provedor de IA"
+      },
+      "integration": {
+        "connected": "conectou uma integração",
+        "removed": "removeu uma integração"
+      }
+    }
+  },
+  "signIn": {
+    "title": "Entrar",
+    "headline": "Seu time de IA já está esperando você.",
+    "pitch": "Crie sua conta e a Lia, o Téo e a Bia chegam ao seu escritório, prontos para o primeiro pedido.",
+    "footer": "Open source e self-hosted. Seus dados ficam com você.",
+    "createTitle": "Criar sua conta",
+    "createSubtitle": "Leva menos de um minuto.",
+    "signInSubtitle": "Que bom ver você de novo.",
+    "name": "Seu nome",
+    "namePlaceholder": "Como o time vai te chamar",
+    "email": "E-mail",
+    "password": "Senha",
+    "passwordHint": "Pelo menos 8 caracteres.",
+    "wait": "Um instante…",
+    "createSubmit": "Criar conta e conhecer o time",
+    "signInSubmit": "Entrar",
+    "github": "Continuar com GitHub",
+    "haveAccount": "Já tem conta?",
+    "noAccount": "Ainda não tem conta?",
+    "toSignIn": "Entrar",
+    "toCreate": "Criar conta",
+    "errors": {
+      "invalidCredentials": "E-mail ou senha não conferem.",
+      "userExists": "Já existe uma conta com esse e-mail. Tente entrar.",
+      "passwordTooShort": "A senha precisa ter pelo menos 8 caracteres."
+    }
+  },
+  "actions": {
+    "requestSent": "Pedido enviado. O time já começou.",
+    "delivered": "Entregue!",
+    "changesSent": "Ajuste enviado. O time já está mexendo.",
+    "saved": "Salvo.",
+    "providerConnected": "Conectado. {count, plural, one {# modelo disponível} other {# modelos disponíveis}}.",
+    "modelsSaved": "Modelos salvos.",
+    "budgetSaved": "Orçamento salvo.",
+    "allowed": "Permitido.",
+    "refused": "Recusado.",
+    "integrationConnected": "Conectado.",
+    "integrationTools": "Conectado. {count, plural, one {# ferramenta encontrada} other {# ferramentas encontradas}}."
+  },
+  "errors": {
+    "generic": "Algo deu errado. Tente de novo.",
+    "managerOnly": "Só quem administra o escritório pode mudar isso.",
+    "invalidData": "Dados inválidos.",
+    "instructionsTooShort": "As instruções estão curtas demais.",
+    "modelRefFormat": "Use o formato provedor:modelo (ex.: anthropic:claude-sonnet-5-5).",
+    "agentNotFound": "Agente não encontrado.",
+    "requestNotFound": "Pedido não encontrado.",
+    "requestNotStuck": "Esse pedido não está travado.",
+    "pasteKey": "Cole a chave de API.",
+    "baseUrlRequired": "Informe a URL base da API.",
+    "noMasterKey": "O servidor está sem SQUADAI_MASTER_KEY, então não pode guardar chaves com segurança.",
+    "noMasterKeySecrets": "O servidor está sem SQUADAI_MASTER_KEY para guardar segredos.",
+    "connectFailed": "Não consegui conectar com essa chave.",
+    "budgetFormat": "Use um valor em dólares, como 20.",
+    "integrationKind": "Tipo de integração inválido.",
+    "notionPage": "Cole o link ou o ID da página do Notion onde as entregas vão ficar.",
+    "urlScheme": "A URL precisa começar com http:// ou https://.",
+    "githubToken": "Cole um token do GitHub.",
+    "githubRejected": "O GitHub recusou o token ({status}).",
+    "notionToken": "Cole o token da integração do Notion.",
+    "notionRejected": "O Notion recusou o token ({status}).",
+    "mcpUrl": "Informe a URL do servidor MCP.",
+    "connectError": "Não consegui conectar: {reason}",
+    "deliveryNotFound": "Entrega não encontrada.",
+    "nothingToExport": "Ainda não há texto para exportar.",
+    "connectNotion": "Conecte o Notion em Integrações para exportar.",
+    "notionRefused": "O Notion recusou ({status}). A página está compartilhada com a integração?",
+    "unknownLocale": "Esse idioma não está disponível."
+  },
+  "workErrors": {
+    "no_room": "Este time não tem sala.",
+    "prompt_too_short": "Conte um pouco mais sobre o que você precisa.",
+    "unknown_playbook": "Esse time não sabe fazer esse tipo de entrega.",
+    "request_not_saved": "Não consegui registrar o pedido.",
+    "delivery_not_created": "Não consegui criar a entrega.",
+    "delivery_not_found": "Entrega não encontrada.",
+    "delivery_not_waiting": "Essa entrega não está esperando decisão.",
+    "approval_not_found": "Pedido de permissão não encontrado.",
+    "approval_decided": "Esse pedido já foi decidido.",
+    "feedback_too_short": "Diga o que você quer mudar.",
+    "empty_message": "Escreva uma mensagem.",
+    "team_not_found": "Time não encontrado.",
+    "message_not_sent": "Não consegui enviar a mensagem."
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "@squadai/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@squadai/catalog": "workspace:*",
+    "@squadai/core": "workspace:*",
+    "@squadai/db": "workspace:*",
+    "@squadai/engine": "workspace:*",
+    "@squadai/providers": "workspace:*",
+    "@squadai/ui": "workspace:*",
+    "better-auth": "^1.7.28",
+    "drizzle-orm": "^0.45.4",
+    "next": "^16.4.6",
+    "next-intl": "^4.14.10",
+    "pg-boss": "^12.40.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "^10.1.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "intl-messageformat": "^12.2.1",
+    "tailwindcss": "^4.3.5",
+    "vitest": "^5.1.2"
+  }
+}

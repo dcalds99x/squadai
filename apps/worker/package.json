@@ -1,0 +1,17 @@
+{
+  "name": "@squadai/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "node src/index.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@squadai/core": "workspace:*",
+    "@squadai/db": "workspace:*",
+    "pg-boss": "^12.40.0",
+    "@squadai/engine": "workspace:*"
+  }
+}

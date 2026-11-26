@@ -1,0 +1,495 @@
+{
+  "metadata": {
+    "description": "An office of AI agent teams that work with you."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "saving": "Saving…",
+    "sending": "Sending…",
+    "testing": "Testing…",
+    "testAndSave": "Test and save",
+    "connect": "Connect",
+    "connected": "Connected",
+    "remove": "Remove",
+    "removing": "Removing…",
+    "system": "System",
+    "live": "live",
+    "reconnecting": "reconnecting…",
+    "seconds": "{seconds} s"
+  },
+  "language": {
+    "label": "Language",
+    "saved": "Language saved."
+  },
+  "nav": {
+    "newRequest": "New request",
+    "main": "Main",
+    "home": "Home",
+    "waiting": "Waiting on you",
+    "teams": "Teams",
+    "hire": "+ Hire a team",
+    "models": "Models & costs",
+    "integrations": "Integrations",
+    "audit": "Audit log",
+    "signOut": "Sign out"
+  },
+  "status": {
+    "in_progress": "In progress",
+    "awaiting_approval": "Waiting on you",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "failed": "Stuck"
+  },
+  "presence": {
+    "working": "working",
+    "thinking": "thinking",
+    "free": "available"
+  },
+  "tiers": {
+    "economy": "Economy",
+    "balanced": "Balanced",
+    "max": "Top quality"
+  },
+  "styles": {
+    "precise": "More precise",
+    "balanced": "Balanced",
+    "creative": "More creative"
+  },
+  "policies": {
+    "allow": "Can",
+    "ask": "Asks first",
+    "deny": "Can't"
+  },
+  "tools": {
+    "labels": {
+      "web_search": "Search the web",
+      "github_read": "Read GitHub",
+      "github_comment": "Comment on GitHub",
+      "request_help": "Ask another team for help",
+      "github_merge": "Merge on GitHub"
+    },
+    "unavailable": {
+      "web_search": "Connect Anthropic in Models & costs to search the web.",
+      "github_read": "Not available right now.",
+      "github_comment": "Connect GitHub in Integrations to comment.",
+      "request_help": "Hire another team so the teams can help each other.",
+      "github_merge": "For safety, squadai never merges."
+    },
+    "mcp": "{server}: {tool}"
+  },
+  "home": {
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}"
+    },
+    "demoMode": "demo mode",
+    "pulse": "This week at a glance",
+    "delivered": {
+      "label": "Deliveries · 7 days",
+      "hint": "Deliveries approved in the last 7 days. The darkest bar is today.",
+      "chart": "Deliveries per day: {values}"
+    },
+    "firstPass": {
+      "label": "First pass",
+      "hint": "Of this week's deliveries, how many you approved without asking for changes.",
+      "ring": "Approved on the first pass"
+    },
+    "timeSaved": {
+      "label": "Time saved",
+      "hint": "How long a person would have taken to do this week's deliveries."
+    },
+    "spend": {
+      "label": "Spent this month",
+      "noLimit": "No limit set.",
+      "limit": "Limit of {limit} a month.",
+      "meter": "Budget used"
+    },
+    "attention": "Needs your attention",
+    "allClear": "All caught up. Nothing is waiting on you.",
+    "alerts": {
+      "deliveries": "<strong>{count}</strong> {count, plural, one {delivery is} other {deliveries are}} waiting for your approval",
+      "age": " · {age} ago",
+      "review": "Review",
+      "tools": "<strong>{count}</strong> {count, plural, one {agent is asking} other {agents are asking}} for permission to use a tool",
+      "decide": "Decide",
+      "failed": "<strong>{team}</strong> got stuck",
+      "unknownError": "unknown error",
+      "view": "View",
+      "budget": "Monthly budget at <strong>{percent}</strong>",
+      "adjust": "Adjust",
+      "noModels": "No AI model connected",
+      "handoff": "<strong>{from}</strong> is waiting for an answer from <strong>{to}</strong>"
+    },
+    "teams": "Your teams",
+    "hire": "+ Hire",
+    "teamStatus": {
+      "waiting": "Waiting on you",
+      "working": "Working",
+      "free": "Free"
+    },
+    "teamStats": "Deliveries in 7 days · approved on the first pass",
+    "activity": "Just happened",
+    "activityEmpty": "Once your teams start working, you can follow along here."
+  },
+  "team": {
+    "fallbackTitle": "Team",
+    "people": "Team members",
+    "working": "working",
+    "newRequest": "New request",
+    "placeholder": "What can the {team} team do for you?",
+    "deliveries": "Deliveries",
+    "columns": {
+      "inProgress": "In progress",
+      "inProgressEmpty": "When you make a request, it shows up here.",
+      "review": "For you to review",
+      "reviewEmpty": "Nothing to review.",
+      "delivered": "Delivered",
+      "deliveredEmpty": "Approved deliveries are kept here."
+    },
+    "versions": "{count, plural, one {# version} other {# versions}}",
+    "stuck": "The team got stuck.",
+    "state": {
+      "waiting": "Waiting for your approval",
+      "firstPass": "Approved on the first pass",
+      "afterChanges": "Approved after {count, plural, one {# round of changes} other {# rounds of changes}}",
+      "queued": "Queued",
+      "working": "The team is working on it"
+    },
+    "retrying": "Retrying…",
+    "retry": "Try again",
+    "howWeWork": "How we work",
+    "youApprove": "You approve"
+  },
+  "room": {
+    "label": "Team room",
+    "people": "{count, plural, one {# person} other {# people}}",
+    "working": " · {names} working",
+    "open": "Open",
+    "teamFallback": "Team",
+    "incoming": "Request from another team",
+    "between": "Between teams",
+    "composerLabel": "Message to the room",
+    "composerPlaceholder": "Talk to the team…",
+    "send": "Send",
+    "mentionHint": "Use @ to call someone in.",
+    "mentionHintExample": "Use @ to call someone in, like @{example}."
+  },
+  "delivery": {
+    "fallbackTitle": "Delivery",
+    "fileName": "delivery",
+    "free": "no cost",
+    "versions": "Versions",
+    "prompt": "What you asked for",
+    "text": "Delivery text",
+    "notes": "Review notes",
+    "inProgress": "The team is still working. The text shows up here as soon as the first version is ready.",
+    "reviewerFallback": "the team",
+    "delivered": "<strong>Delivered.</strong> {count, plural, =0 {Approved on the first pass.} one {Approved after # round of changes.} other {Approved after # rounds of changes.}}",
+    "backstage": "Behind the delivery",
+    "credits": "Who did it",
+    "nobody": "Nobody has started yet.",
+    "totalCost": "Cost of this delivery",
+    "thread": "Conversation about this delivery",
+    "download": "Download .md",
+    "toNotion": "Send to Notion",
+    "openNotion": "Open in Notion ↗"
+  },
+  "decision": {
+    "label": "Your decision",
+    "prompt": "<strong>Like it?</strong> <muted>Approve it to deliver, or tell us what to change in your own words.</muted>",
+    "requestChanges": "Ask for changes",
+    "approving": "Approving…",
+    "approve": "Approve and deliver",
+    "whatToChange": "What do you want to change?",
+    "placeholder": "E.g. make the intro shorter and add an example with an electricity bill",
+    "quick": {
+      "shorter": "Shorter",
+      "formal": "More formal tone",
+      "example": "Add an example",
+      "title": "Catchier title"
+    },
+    "sendTo": "Send to {name}",
+    "relay": "{name} passes it on to whoever did the part you want to change."
+  },
+  "waiting": {
+    "title": "Waiting on you",
+    "allClear": "All caught up.",
+    "count": "{count, plural, one {# item needs} other {# items need}} your decision to move forward.",
+    "empty": "Nothing is waiting on you right now.",
+    "agentFallback": "An agent",
+    "wantsTool": "<strong>{agent}</strong> wants to use <strong>{tool}</strong>",
+    "toolContext": "{team} · for “{title}” · {age} ago",
+    "deliveryContext": "{team} · {kind} · waiting for {age}",
+    "review": "Review",
+    "deny": "Don't allow",
+    "allow": "Allow"
+  },
+  "requestForm": {
+    "placeholder": "Describe it the way you'd tell a colleague. E.g. an article about solar energy for homeowners, in a light tone.",
+    "noTeams": "Hire a team to make your first request.",
+    "whatYouNeed": "What do you need?",
+    "team": "Team",
+    "kind": "Type of delivery",
+    "submit": "Ask the team"
+  },
+  "newRequest": {
+    "title": "New request",
+    "intro": "Describe what you need. We'll suggest the right team.",
+    "placeholder": "E.g. an article about solar energy for homeowners, light tone",
+    "searching": "Finding the right team…",
+    "options": "Who can do it",
+    "empty": "Suggestions show up here",
+    "suggested": "suggested",
+    "askTeam": "Ask {team}",
+    "ask": "Ask"
+  },
+  "hire": {
+    "title": "Hire a team",
+    "intro": "Every team arrives ready to go: people with clear roles and a way of working. You can adjust anything later.",
+    "hired": "Already in your office",
+    "delivers": "Can deliver",
+    "askManager": "Ask whoever manages the office to hire it.",
+    "hiring": "Hiring…",
+    "again": "Hire another one like it",
+    "hireThis": "Hire this team"
+  },
+  "agent": {
+    "fallbackTitle": "Agent",
+    "roleOnTeam": "{role} on the {team} team",
+    "workingOn": "Working on “{title}” right now",
+    "free": "Available",
+    "stats": "This month in numbers",
+    "delivered": "Approved deliveries",
+    "deliveredNote": "they worked on",
+    "firstPass": "Approved on the first pass",
+    "firstPassNote": "with no changes requested",
+    "avgTime": "Average time per task",
+    "avgTimeNote": "this month",
+    "cost": "Cost this month",
+    "costNote": "{count, plural, one {# model call} other {# model calls}}",
+    "howTheyWork": "How they work",
+    "goodAt": "Good at",
+    "prefers": "Likes to get",
+    "never": "Never does",
+    "recent": "Recent deliveries",
+    "noRecent": "Hasn't worked on a delivery yet.",
+    "canDo": "What {name} can do",
+    "canDoIntro": "Like at any job: everyone has their own level of access.",
+    "policyHelp": "“Asks first” pauses the work until you allow it in Waiting on you. New tools from integrations start as “Can't”.",
+    "brain": {
+      "title": "Brain",
+      "intro": "The AI model {name} uses to think.",
+      "profile": "Profile",
+      "uses": "Uses <strong>{primary}</strong>, unless the office changed the default in Models & costs.",
+      "usesWithFallback": "Uses <strong>{primary}</strong> and, if it fails, <strong>{fallback}</strong>, unless the office changed the default in Models & costs.",
+      "style": "Style",
+      "hideCustom": "Hide custom model",
+      "useCustom": "Use a specific model",
+      "primary": "Main model",
+      "primaryPlaceholder": "e.g. anthropic:claude-sonnet-5-5",
+      "fallback": "Plan B, if the main one fails",
+      "fallbackPlaceholder": "e.g. ollama:llama3",
+      "instructions": "Instructions and personality"
+    }
+  },
+  "models": {
+    "title": "Models & costs",
+    "intro": "Connect the AI accounts you already have. Keys are stored only on your server, encrypted, and you pay the provider directly.",
+    "providers": "Providers",
+    "providerInfo": {
+      "anthropic": "Claude Opus, Sonnet and Haiku",
+      "openai": "GPT models",
+      "google": "Gemini models",
+      "openrouter": "Hundreds of models with one key",
+      "ollama": "Local models, no per-use cost",
+      "openai-compatible": "Any OpenAI-compatible API"
+    },
+    "otherProvider": "Other provider",
+    "tiersTitle": "Models by profile",
+    "tiersIntro": "Every agent has a profile. Here you choose which model each profile uses, in the provider:model format.",
+    "budget": "Monthly budget",
+    "noLimit": "no limit set",
+    "ofLimit": "of {limit}",
+    "budgetNote": "Calculated in US dollars, from each model's public price. When the limit is reached, teams pause until you raise it.",
+    "spendByTeam": "Spend by team this month",
+    "noCalls": "No model calls yet.",
+    "calls": "{count, plural, one {# call} other {# calls}}",
+    "demo": {
+      "title": "Demo mode",
+      "body": "Agents answer with sample text, with no key and no cost. Good for getting to know the flow. Turn it off once you connect a real provider."
+    },
+    "workspaceLanguage": {
+      "title": "Office language",
+      "body": "The language agents talk in, write deliveries in and get their instructions in. Teams hired after a change arrive in that language; teams already here keep the profile they have."
+    },
+    "notConnected": "Not connected",
+    "keyHint": "Key {hint}",
+    "noKey": "No key",
+    "changeKey": "Change key",
+    "apiKey": "API key",
+    "optional": " (optional)",
+    "keyPlaceholder": "Paste your key here",
+    "baseUrl": "Base URL",
+    "keyNote": "We test the key before saving it. It never goes back to the browser.",
+    "profile": "Profile",
+    "primary": "Main model",
+    "fallback": "Plan B",
+    "primaryLabel": "Main model for the {tier} profile",
+    "fallbackLabel": "Plan B for the {tier} profile",
+    "none": "none",
+    "saveModels": "Save models",
+    "monthlyLimit": "Monthly limit (US$)",
+    "noLimitPlaceholder": "no limit"
+  },
+  "integrations": {
+    "title": "Integrations",
+    "intro": "The systems agents can use. Every new tool starts blocked; you unlock it per agent, on their profile.",
+    "github": "Read private pull requests and comment on them.",
+    "notion": "Export approved deliveries to a page.",
+    "mcpTitle": "MCP servers",
+    "mcpIntro": "Connect any system that speaks MCP: CRM, internal database, Jira, Slack… Its tools show up on every agent's profile.",
+    "mcpTools": "{count, plural, one {# tool} other {# tools}}: {names}",
+    "newMcp": "New MCP server",
+    "newMcpSubtitle": "Streamable HTTP endpoint URL.",
+    "off": "Off",
+    "update": "Update",
+    "changeToken": "Change token",
+    "name": "Name",
+    "namePlaceholder": "e.g. crm",
+    "url": "URL",
+    "tokenOptional": "Token (optional)",
+    "githubToken": "Personal access token",
+    "notionToken": "Integration token",
+    "notionPage": "Page to save into (link or ID)",
+    "note": "We test it before saving. The token is stored encrypted on the server."
+  },
+  "audit": {
+    "title": "Audit log",
+    "intro": "Everything that changed in the office, and who changed it. The 200 most recent entries.",
+    "when": "When",
+    "who": "Who",
+    "what": "What",
+    "detail": "Details",
+    "actions": {
+      "workspace": {
+        "created": "created the office",
+        "locale_changed": "changed the office language"
+      },
+      "team": {
+        "hired": "hired a team"
+      },
+      "request": {
+        "created": "made a request"
+      },
+      "delivery": {
+        "approved": "approved a delivery",
+        "changes_requested": "asked for changes to a delivery",
+        "exported": "exported a delivery"
+      },
+      "agent": {
+        "updated": "changed an agent's brain or instructions",
+        "tool_policy_changed": "changed a permission"
+      },
+      "tool": {
+        "allowed": "allowed a tool to be used",
+        "refused": "refused a tool"
+      },
+      "provider": {
+        "connected": "connected an AI provider",
+        "removed": "removed an AI provider"
+      },
+      "integration": {
+        "connected": "connected an integration",
+        "removed": "removed an integration"
+      }
+    }
+  },
+  "signIn": {
+    "title": "Sign in",
+    "headline": "Your AI team is already waiting for you.",
+    "pitch": "Create your account and Lia, Téo and Bia join your office, ready for your first request.",
+    "footer": "Open source and self-hosted. Your data stays with you.",
+    "createTitle": "Create your account",
+    "createSubtitle": "It takes less than a minute.",
+    "signInSubtitle": "Good to see you again.",
+    "name": "Your name",
+    "namePlaceholder": "What the team will call you",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 8 characters.",
+    "wait": "One moment…",
+    "createSubmit": "Create account and meet the team",
+    "signInSubmit": "Sign in",
+    "github": "Continue with GitHub",
+    "haveAccount": "Already have an account?",
+    "noAccount": "Don't have an account yet?",
+    "toSignIn": "Sign in",
+    "toCreate": "Create account",
+    "errors": {
+      "invalidCredentials": "That email and password don't match.",
+      "userExists": "There's already an account with that email. Try signing in.",
+      "passwordTooShort": "The password needs at least 8 characters."
+    }
+  },
+  "actions": {
+    "requestSent": "Request sent. The team has already started.",
+    "delivered": "Delivered!",
+    "changesSent": "Changes sent. The team is already on it.",
+    "saved": "Saved.",
+    "providerConnected": "Connected. {count, plural, one {# model} other {# models}} available.",
+    "modelsSaved": "Models saved.",
+    "budgetSaved": "Budget saved.",
+    "allowed": "Allowed.",
+    "refused": "Refused.",
+    "integrationConnected": "Connected.",
+    "integrationTools": "Connected. Found {count, plural, one {# tool} other {# tools}}."
+  },
+  "errors": {
+    "generic": "Something went wrong. Try again.",
+    "managerOnly": "Only people who manage the office can change this.",
+    "invalidData": "Invalid data.",
+    "instructionsTooShort": "The instructions are too short.",
+    "modelRefFormat": "Use the provider:model format (e.g. anthropic:claude-sonnet-5-5).",
+    "agentNotFound": "Agent not found.",
+    "requestNotFound": "Request not found.",
+    "requestNotStuck": "This request isn't stuck.",
+    "pasteKey": "Paste the API key.",
+    "baseUrlRequired": "Enter the API's base URL.",
+    "noMasterKey": "The server has no SQUADAI_MASTER_KEY, so it can't store keys safely.",
+    "noMasterKeySecrets": "The server has no SQUADAI_MASTER_KEY to store secrets.",
+    "connectFailed": "Couldn't connect with that key.",
+    "budgetFormat": "Use an amount in US dollars, like 20.",
+    "integrationKind": "Invalid integration type.",
+    "notionPage": "Paste the link or ID of the Notion page where deliveries should go.",
+    "urlScheme": "The URL needs to start with http:// or https://.",
+    "githubToken": "Paste a GitHub token.",
+    "githubRejected": "GitHub rejected the token ({status}).",
+    "notionToken": "Paste the Notion integration token.",
+    "notionRejected": "Notion rejected the token ({status}).",
+    "mcpUrl": "Enter the MCP server URL.",
+    "connectError": "Couldn't connect: {reason}",
+    "deliveryNotFound": "Delivery not found.",
+    "nothingToExport": "There's no text to export yet.",
+    "connectNotion": "Connect Notion in Integrations to export.",
+    "notionRefused": "Notion refused ({status}). Is the page shared with the integration?",
+    "unknownLocale": "That language isn't available."
+  },
+  "workErrors": {
+    "no_room": "This team has no room.",
+    "prompt_too_short": "Tell us a bit more about what you need.",
+    "unknown_playbook": "This team doesn't do that kind of delivery.",
+    "request_not_saved": "Couldn't save the request.",
+    "delivery_not_created": "Couldn't create the delivery.",
+    "delivery_not_found": "Delivery not found.",
+    "delivery_not_waiting": "This delivery isn't waiting for a decision.",
+    "approval_not_found": "Permission request not found.",
+    "approval_decided": "This request has already been decided.",
+    "feedback_too_short": "Say what you want to change.",
+    "empty_message": "Write a message.",
+    "team_not_found": "Team not found.",
+    "message_not_sent": "Couldn't send the message."
+  }
+}
