@@ -20,6 +20,8 @@ export interface SidebarTeam {
   name: string;
   color: string;
   waiting: number;
+  /** An agent on the team is working on a request right now. */
+  working: boolean;
 }
 
 export interface SidebarDepartment {
@@ -42,6 +44,9 @@ export async function getSidebar(db: DbOrTx, workspaceId: string): Promise<Sideb
         select count(*)::int from ${delivery}
         where ${delivery.teamId} = ${team.id} and ${delivery.status} = 'awaiting_approval'
       )`,
+      working: sql<boolean>`exists(
+        select 1 from "request" r where r.team_id = ${team.id} and r.status = 'running'
+      )`,
     })
     .from(department)
     .innerJoin(team, eq(team.departmentId, department.id))
@@ -61,6 +66,7 @@ export async function getSidebar(db: DbOrTx, workspaceId: string): Promise<Sideb
       name: r.name,
       color: r.color,
       waiting: r.waiting,
+      working: r.working,
     });
     byDepartment.set(r.departmentId, entry);
   }

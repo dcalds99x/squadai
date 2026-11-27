@@ -5,7 +5,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateText, type LanguageModel } from "ai";
+import { generateText, type LanguageModel, streamText } from "ai";
 import type { ChatModel, ChatRequest, ModelOutput, ProviderCredentials } from "./types.ts";
 
 export const DEFAULT_BASE_URLS: Record<string, string> = {
@@ -49,7 +49,7 @@ export function createAiSdkModel(model: string, credentials: ProviderCredentials
     provider: credentials.provider,
     model,
     async generate(request: ChatRequest): Promise<ModelOutput> {
-      const result = await generateText({
+      const options = {
         model: lm,
         system: request.system,
         messages: [
@@ -61,7 +61,26 @@ export function createAiSdkModel(model: string, credentials: ProviderCredentials
           : { temperature: TEMPERATURE[request.style] }),
         // Room for reasoning plus a full deliverable.
         maxOutputTokens: request.maxOutputTokens ?? 16000,
-      });
+      };
+      if (request.onDelta) {
+        // Stream when someone is watching; errors surface when awaited below.
+        let failure: unknown = null;
+        const result = streamText({
+          ...options,
+          onError: ({ error }) => {
+            failure = error;
+          },
+        });
+        for await (const delta of result.textStream) request.onDelta(delta);
+        if (failure) throw failure;
+        const [text, usage] = await Promise.all([result.text, result.usage]);
+        return {
+          text: text.trim(),
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+        };
+      }
+      const result = await generateText(options);
       return {
         text: result.text.trim(),
         inputTokens: result.usage.inputTokens ?? 0,

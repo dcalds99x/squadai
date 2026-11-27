@@ -70,7 +70,7 @@ export default async function AgentPage({ params }: Props) {
     a.stats.delivered === 0 ? "—" : formatPercent(a.stats.firstPass / a.stats.delivered, locale);
 
   return (
-    <main className="mx-auto flex max-w-[1180px] flex-col gap-6 px-6 py-7 sm:px-11">
+    <main className="page">
       <Link
         href={`/teams/${a.teamSlug}`}
         className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold"
@@ -102,7 +102,7 @@ export default async function AgentPage({ params }: Props) {
         />
         <div className="flex flex-[1_1_360px] flex-col gap-2.5">
           <div>
-            <h1 className="font-display text-4xl font-bold tracking-tight">{a.name}</h1>
+            <h1 className="page-title">{a.name}</h1>
             <span className="text-muted">
               {t("roleOnTeam", { role: a.role, team: a.teamName })}
             </span>

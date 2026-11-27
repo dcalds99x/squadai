@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { cancelDeliveryAction, deleteDeliveryAction } from "@/app/(office)/actions";
 import { ConfirmAction } from "@/components/confirm-action";
 import { DecisionBar } from "@/components/decision-bar";
+import { LiveDraft } from "@/components/live-draft";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Markdown } from "@/components/markdown";
 import { StatusPill } from "@/components/status";
@@ -67,141 +68,147 @@ export default async function DeliveryPage({ params, searchParams }: Props) {
 
   return (
     <div className="flex min-h-screen flex-wrap items-stretch lg:min-h-0 lg:flex-1 lg:flex-nowrap lg:overflow-hidden">
-      <main className="flex min-w-0 flex-[999_1_560px] flex-col gap-5 px-6 py-7 sm:px-9 lg:overflow-y-auto">
-        <div className="flex items-center justify-between gap-3">
-          <Link
-            href={`/teams/${d.teamSlug}`}
-            className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
+      <main className="min-w-0 flex-[999_1_560px] lg:overflow-y-auto">
+        <div className="page">
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href={`/teams/${d.teamSlug}`}
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold"
             >
-              <path d="M19 12H5m6-6-6 6 6 6" />
-            </svg>
-            {d.teamName}
-          </Link>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <LiveRefresh teamId={d.teamId} deliveryId={d.id} />
-            {(d.status === "in_progress" || d.status === "awaiting_approval") && (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M19 12H5m6-6-6 6 6 6" />
+              </svg>
+              {d.teamName}
+            </Link>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <LiveRefresh teamId={d.teamId} deliveryId={d.id} />
+              {(d.status === "in_progress" || d.status === "awaiting_approval") && (
+                <ConfirmAction
+                  label={tm("cancel")}
+                  question={tm("cancelQuestion")}
+                  detail={tm("cancelDetail")}
+                  confirmLabel={tm("cancelConfirm")}
+                  keepLabel={tm("keep")}
+                  pendingLabel={tm("working")}
+                  run={cancelDeliveryAction.bind(null, d.id)}
+                />
+              )}
               <ConfirmAction
-                label={tm("cancel")}
-                question={tm("cancelQuestion")}
-                detail={tm("cancelDetail")}
-                confirmLabel={tm("cancelConfirm")}
+                danger
+                label={tm("delete")}
+                question={tm("deleteQuestion")}
+                detail={tm("deleteDetail")}
+                confirmLabel={tm("deleteConfirm")}
                 keepLabel={tm("keep")}
                 pendingLabel={tm("working")}
-                run={cancelDeliveryAction.bind(null, d.id)}
+                run={deleteDeliveryAction.bind(null, d.id)}
               />
-            )}
-            <ConfirmAction
-              danger
-              label={tm("delete")}
-              question={tm("deleteQuestion")}
-              detail={tm("deleteDetail")}
-              confirmLabel={tm("deleteConfirm")}
-              keepLabel={tm("keep")}
-              pendingLabel={tm("working")}
-              run={deleteDeliveryAction.bind(null, d.id)}
-            />
-          </div>
-        </div>
-
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-semibold">
-                {d.kind}
-              </span>
-              <StatusPill status={status} />
             </div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">{d.title}</h1>
           </div>
-          {d.versions.length > 0 && (
-            <nav aria-label={t("versions")} className="flex flex-wrap gap-1.5">
-              {d.versions.map((x) => {
-                const on = x.id === selected?.id;
-                return (
-                  <Link
-                    key={x.id}
-                    href={`?v=${x.number}`}
-                    aria-current={on ? "page" : undefined}
-                    className={`inline-flex h-10 items-center rounded-full border px-3.5 text-[13px] font-semibold ${
-                      on
-                        ? "border-brand bg-brand-wash text-brand-strong"
-                        : "border-line-strong bg-surface text-ink-2"
-                    }`}
-                  >
-                    v{x.number} · {x.label.split(" · ")[0]}
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
-        </header>
 
-        <details className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-semibold">{t("prompt")}</summary>
-          <p className="mt-2 whitespace-pre-line text-muted">{d.prompt}</p>
-        </details>
-
-        {selected ? (
-          <article
-            aria-label={t("text")}
-            className="flex flex-wrap gap-8 rounded-[20px] border border-line bg-surface px-6 py-8 sm:px-10"
-          >
-            <div className="min-w-0 flex-[999_1_420px]">
-              <Markdown>{selected.content}</Markdown>
-            </div>
-            {notes.length > 0 && (
-              <aside aria-label={t("notes")} className="flex flex-[1_1_220px] flex-col gap-3">
-                <span className="text-xs font-semibold tracking-wider text-muted uppercase">
-                  {t("notes")}
+          <header className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-semibold">
+                  {d.kind}
                 </span>
-                {notes.map((n) => (
-                  <div
-                    key={`${n.anchor}-${n.body}`}
-                    className="flex gap-2 rounded-xl border border-[#F5E1A4] bg-[#FFFBEA] p-3"
-                  >
-                    {n.avatar && (
-                      <Avatar spec={n.avatar} name={n.agentName ?? ""} size={26} decorative />
-                    )}
-                    <div className="flex flex-col gap-1 text-[13px] leading-snug text-[#4A3A00]">
-                      <q className="font-semibold text-ink">{n.anchor}</q>
-                      <span>
-                        <strong className="text-ink">{n.agentName}:</strong> {n.body}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </aside>
+                <StatusPill status={status} />
+              </div>
+              <h1 className="page-title">{d.title}</h1>
+            </div>
+            {d.versions.length > 0 && (
+              <nav aria-label={t("versions")} className="flex flex-wrap gap-1.5">
+                {d.versions.map((x) => {
+                  const on = x.id === selected?.id;
+                  return (
+                    <Link
+                      key={x.id}
+                      href={`?v=${x.number}`}
+                      aria-current={on ? "page" : undefined}
+                      className={`inline-flex h-10 items-center rounded-full border px-3.5 text-[13px] font-semibold ${
+                        on
+                          ? "border-brand bg-brand-wash text-brand-strong"
+                          : "border-line-strong bg-surface text-ink-2"
+                      }`}
+                    >
+                      v{x.number} · {x.label.split(" · ")[0]}
+                    </Link>
+                  );
+                })}
+              </nav>
             )}
-          </article>
-        ) : (
-          <p className="rounded-2xl border border-dashed border-line-strong bg-surface px-5 py-8 text-center text-muted">
-            {t("inProgress")}
-          </p>
-        )}
+          </header>
 
-        {d.status === "awaiting_approval" && (
-          <DecisionBar deliveryId={d.id} reviewerName={reviewer} />
-        )}
-        {d.status === "delivered" && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ok-soft px-5 py-3 text-ok">
-            <span>{t.rich("delivered", { count: d.adjustmentCount, strong })}</span>
-            <ExportButtons deliveryId={d.id} notion={hasNotion} />
-          </div>
-        )}
+          {(d.status === "in_progress" || d.status === "awaiting_approval") && (
+            <LiveDraft requestId={d.requestId} versions={d.versions.length} />
+          )}
+
+          <details className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm">
+            <summary className="cursor-pointer font-semibold">{t("prompt")}</summary>
+            <p className="mt-2 whitespace-pre-line text-muted">{d.prompt}</p>
+          </details>
+
+          {selected ? (
+            <article
+              aria-label={t("text")}
+              className="flex flex-wrap gap-8 rounded-[20px] border border-line bg-surface px-6 py-8 sm:px-10"
+            >
+              <div className="min-w-0 flex-[999_1_420px]">
+                <Markdown>{selected.content}</Markdown>
+              </div>
+              {notes.length > 0 && (
+                <aside aria-label={t("notes")} className="flex flex-[1_1_220px] flex-col gap-3">
+                  <span className="text-xs font-semibold tracking-wider text-muted uppercase">
+                    {t("notes")}
+                  </span>
+                  {notes.map((n) => (
+                    <div
+                      key={`${n.anchor}-${n.body}`}
+                      className="flex gap-2 rounded-xl border border-[#F5E1A4] bg-[#FFFBEA] p-3"
+                    >
+                      {n.avatar && (
+                        <Avatar spec={n.avatar} name={n.agentName ?? ""} size={26} decorative />
+                      )}
+                      <div className="flex flex-col gap-1 text-[13px] leading-snug text-[#4A3A00]">
+                        <q className="font-semibold text-ink">{n.anchor}</q>
+                        <span>
+                          <strong className="text-ink">{n.agentName}:</strong> {n.body}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </aside>
+              )}
+            </article>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-line-strong bg-surface px-5 py-8 text-center text-muted">
+              {t("inProgress")}
+            </p>
+          )}
+
+          {d.status === "awaiting_approval" && (
+            <DecisionBar deliveryId={d.id} reviewerName={reviewer} />
+          )}
+          {d.status === "delivered" && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ok-soft px-5 py-3 text-ok">
+              <span>{t.rich("delivered", { count: d.adjustmentCount, strong })}</span>
+              <ExportButtons deliveryId={d.id} notion={hasNotion} />
+            </div>
+          )}
+        </div>
       </main>
 
       <aside
         aria-label={t("backstage")}
-        className="flex max-w-full flex-[1_1_300px] flex-col gap-6 border-line border-l bg-surface px-5 py-6 lg:max-w-[360px] lg:overflow-y-auto"
+        className="flex max-w-full flex-[1_1_300px] flex-col gap-6 border-line border-l bg-surface px-5 py-6 lg:w-[360px] lg:max-w-none lg:flex-none lg:overflow-y-auto"
       >
         <section className="flex flex-col gap-3">
           <h2 className="font-display text-[17px] font-bold">{t("credits")}</h2>

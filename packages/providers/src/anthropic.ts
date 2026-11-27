@@ -30,7 +30,7 @@ export function createAnthropicModel(
     model,
     async generate(request: ChatRequest): Promise<ModelOutput> {
       const withFallback = FALLBACK_MODELS.has(model);
-      const response = await client.beta.messages.create({
+      const params: Anthropic.Beta.Messages.MessageCreateParamsNonStreaming = {
         model,
         max_tokens: request.maxOutputTokens ?? 16000,
         system: `${request.system}\n\n${STYLE_GUIDE[request.style]}`,
@@ -42,7 +42,16 @@ export function createAnthropicModel(
         ...(withFallback
           ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
           : {}),
-      });
+      };
+      let response: Awaited<ReturnType<typeof client.beta.messages.create>>;
+      if (request.onDelta) {
+        // Stream when someone is watching; the final message is the same.
+        const stream = client.beta.messages.stream(params);
+        stream.on("text", (delta) => request.onDelta?.(delta));
+        response = await stream.finalMessage();
+      } else {
+        response = await client.beta.messages.create(params);
+      }
 
       if (response.stop_reason === "refusal") {
         throw new ModelRefusalError(

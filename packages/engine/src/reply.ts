@@ -6,7 +6,7 @@ import { createLogger, type Logger, resolveAgentModels, workspaceLocale } from "
 import { type DbOrTx, schema } from "@squadai/db";
 import { friendlyError, generateWithFallback } from "@squadai/providers";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
-import { notify } from "./events.ts";
+import { createStreamer, notify } from "./events.ts";
 import type { ModelContext } from "./models.ts";
 import { scopeInstructions } from "./scope.ts";
 import { wordsFor } from "./words.ts";
@@ -117,10 +117,19 @@ export async function replyInRoom(
     .join("\n");
 
   let body: string;
+  // The reply appears in the room as it is written.
+  const streamer = createStreamer(db, {
+    workspaceId: who.workspaceId,
+    teamId: who.teamId,
+    agentName: who.name,
+    kind: "chat",
+  });
   try {
     const result = await generateWithFallback(
       resolveAgentModels(who, settings),
       {
+        onDelta: streamer.onDelta,
+        onRestart: streamer.onRestart,
         system: [
           who.instructions,
           words.prompt.chatSystem(who.name, who.role, who.teamName),
@@ -155,4 +164,5 @@ export async function replyInRoom(
     .insert(message)
     .values({ roomId: teamRoom.id, kind: "chat", authorAgentId: who.id, body });
   await notify(db, { type: "room", workspaceId: who.workspaceId, teamId: who.teamId });
+  await streamer.done();
 }

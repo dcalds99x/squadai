@@ -131,9 +131,9 @@ export default async function HomePage() {
   const deliveredWeek = week.reduce((s, d) => s + d.count, 0);
 
   return (
-    <main className="mx-auto flex max-w-[1120px] flex-col gap-6 px-6 py-8 sm:px-10">
-      <header className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="font-display text-[28px] font-bold tracking-tight">
+    <main className="page">
+      <header className="page-header items-baseline">
+        <h1 className="page-title">
           {t(`greeting.${dayPeriod(now, tz)}`, { name: firstName(user.name) })}
         </h1>
         <div className="flex items-center gap-4 text-sm text-subtle">

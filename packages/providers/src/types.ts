@@ -34,6 +34,13 @@ export interface ChatRequest {
   style: AgentStyle;
   effort: Effort;
   maxOutputTokens?: number;
+  /**
+   * Called with each piece of text as the model writes it. Providers that can
+   * stream do; the result is the same either way.
+   */
+  onDelta?: (text: string) => void;
+  /** Called when a call failed part-way and another model starts over (Plan B). */
+  onRestart?: () => void;
   hint?: {
     agentName: string;
     kind: CallKind;

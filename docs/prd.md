@@ -93,6 +93,16 @@ count as much as features.
 
 Newest first. Each entry says what changed and why.
 
+### 2026-11-27 · Phase 6: foundations (grid, sidebar, streaming)
+
+Plan for Phases 6–9 and the v2 visual direction: [design canvas](https://claude.ai/artifact/SiucTQH9mrPfT3FK1zSztA). Phase 6 shipped:
+
+| Item      | What changed                                                                                                                                                                                                                                                                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One grid  | Pages used six widths (760–1180 px) and five title sizes. Now every page uses the same container (1200 px, 32 px padding), header and 26 px title; the sidebar is 248 px and side panels 360 px. See [design/grid.md](design/grid.md).                                                                                                            |
+| Sidebar   | Search (⌘K), departments that fold (remembered), a live "working" dot and waiting counts per team, and a collapse to a 68 px rail.                                                                                                                                                                                                                |
+| Streaming | Models stream (Anthropic, OpenAI-compatible, Google, demo). The engine batches text every 100 ms into numbered pieces over the existing Postgres → SSE channel, to that workspace only. The room shows replies as they're written and a live preview of step work; the delivery page shows the draft being written. One event connection per tab. |
+
 ### 2026-11-27 · Readable deliveries, and taking work back
 
 | #   | Feedback                                                          | Decision                                                                                                                                                                                                                                                                                                                                                                                                                        |

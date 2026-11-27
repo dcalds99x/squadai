@@ -17,6 +17,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { readableLiveText, useLiveTexts } from "@/lib/live-events";
 
 /** The last room lines, light enough to send to the browser. */
 export interface RecentLine {
@@ -156,10 +157,12 @@ export function RoomFeed({
   children,
   activity,
   userName,
+  teamId,
 }: {
   children: ReactNode;
   activity: Activity[];
   userName: string;
+  teamId: string;
 }) {
   const t = useTranslations("room");
   const { agents, recent, sent } = useRoomLive();
@@ -207,7 +210,20 @@ export function RoomFeed({
         }),
     ),
   ];
-  const busy = activity.filter((a) => !typing.includes(a.name));
+  // What agents are writing right now. Chat replies and discussion turns become
+  // room messages, so they stream as bubbles; step work shows as a live preview.
+  const liveTexts = useLiveTexts({ teamId }, lastId);
+  const bubbles = liveTexts.filter(
+    (l) => (l.kind === "chat" || l.kind === "discussion") && l.text.trim(),
+  );
+  const writing = new Map(
+    liveTexts
+      .filter((l) => !l.done && l.kind !== "chat" && l.kind !== "discussion")
+      .map((l) => [l.agentName, readableLiveText(l.text)]),
+  );
+  const streamingNow = new Set(bubbles.map((b) => b.agentName));
+  const typingNow = typing.filter((name) => !streamingNow.has(name));
+  const busy = activity.filter((a) => !typing.includes(a.name) && !streamingNow.has(a.name));
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -216,7 +232,28 @@ export function RoomFeed({
         aria-live="polite"
         className="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto px-5 py-[18px]"
       >
-        {typing.map((name) => (
+        {bubbles.map((b) => (
+          <li key={b.id} className="msg-in flex items-start gap-2.5">
+            {agents.get(b.agentName) && (
+              <Avatar
+                spec={agents.get(b.agentName) as AvatarSpec}
+                name={b.agentName}
+                size={32}
+                decorative
+              />
+            )}
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-xs text-subtle">
+                <strong className="text-ink">{b.agentName}</strong> · {t("writing")}
+              </span>
+              <p className="rounded-[4px_14px_14px_14px] bg-canvas px-3 py-2.5 text-sm leading-relaxed whitespace-pre-line">
+                {b.text}
+                {!b.done && <span className="stream-caret" aria-hidden="true" />}
+              </p>
+            </div>
+          </li>
+        ))}
+        {typingNow.map((name) => (
           <li key={`typing-${name}`} className="msg-in flex items-center gap-2.5">
             {agents.get(name) && (
               <Avatar spec={agents.get(name) as AvatarSpec} name={name} size={32} decorative />
@@ -244,8 +281,13 @@ export function RoomFeed({
           <li key={`busy-${a.name}`} className="msg-in flex items-center gap-2.5">
             <Avatar spec={a.avatar} name={a.name} size={28} presence="working" decorative />
             <span className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-dashed border-line-strong px-3 py-2 text-[13px] text-muted">
-              <span className="min-w-0 flex-1 truncate">
-                {t("workingOn", { name: a.name, task: a.task })}
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="truncate">{t("workingOn", { name: a.name, task: a.task })}</span>
+                {writing.get(a.name) && (
+                  <span className="line-clamp-3 text-xs leading-snug text-ink-2 italic">
+                    …{writing.get(a.name)?.slice(-220)}
+                  </span>
+                )}
               </span>
               <Dots />
             </span>

@@ -9,12 +9,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NewRequestPage() {
   const t = await getTranslations("newRequest");
   return (
-    <main className="mx-auto flex max-w-[760px] flex-col gap-6 px-6 py-10 sm:px-10">
-      <header className="flex flex-col gap-1.5">
-        <h1 className="font-display text-[30px] font-bold tracking-tight">{t("title")}</h1>
-        <p className="text-muted">{t("intro")}</p>
+    <main className="page">
+      <header className="page-heading">
+        <h1 className="page-title">{t("title")}</h1>
+        <p className="page-intro">{t("intro")}</p>
       </header>
-      <NewRequest />
+      <div className="page-narrow">
+        <NewRequest />
+      </div>
     </main>
   );
 }
