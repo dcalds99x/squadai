@@ -1,0 +1,39 @@
+# Reference requests for the Content & SEO team.
+# expect.scope: "in" runs the request; "out" only checks it is refused and sent elsewhere.
+team: content-seo
+cases:
+  - id: blog-post
+    prompt: A blog post about home composting for beginners
+    playbook: artigo-blog
+    expect:
+      outcome: awaiting_approval
+      mention: [composting]
+      minWords: 60
+      headings: true
+      reviewNotes: true
+    rubric: A beginner can follow it. Clear headings, practical steps, no statistics without a source.
+  - id: open-request
+    prompt: Write a short launch email for our new balcony garden kit
+    expect:
+      outcome: awaiting_approval
+      mention: [balcony garden kit]
+      minWords: 40
+    rubric: Reads like a launch email, with a subject line idea and one clear call to action.
+  - id: case-study-checkpoint
+    prompt: A case study about a bakery that doubled online orders
+    playbook: estudo-caso
+    expect:
+      outcome: awaiting_approval
+      checkpoints: 1
+      mention: [bakery]
+    rubric: Tells a customer story with a problem, what changed and a result.
+  - id: off-topic-code
+    prompt: Fix the bug in our checkout code
+    expect:
+      scope: out
+      suggests: code-review
+  - id: off-topic-pricing
+    prompt: Competitor pricing analysis for our CRM plans
+    expect:
+      scope: out
+      suggests: market-research

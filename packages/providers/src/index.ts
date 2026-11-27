@@ -11,4 +11,5 @@ export {
 export { costMicros, priceOf } from "./pricing.ts";
 export * from "./protocol.ts";
 export * from "./registry.ts";
+export * from "./telemetry.ts";
 export * from "./types.ts";

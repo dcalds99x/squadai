@@ -68,14 +68,16 @@
       "github_read": "Read GitHub",
       "github_comment": "Comment on GitHub",
       "request_help": "Ask another team for help",
-      "github_merge": "Merge on GitHub"
+      "github_merge": "Merge on GitHub",
+      "ask_teammate": "Ask a teammate"
     },
     "unavailable": {
       "web_search": "Connect Anthropic in Models & costs to search the web.",
       "github_read": "Not available right now.",
       "github_comment": "Connect GitHub in Integrations to comment.",
       "request_help": "Hire another team so the teams can help each other.",
-      "github_merge": "For safety, squadai never merges."
+      "github_merge": "For safety, squadai never merges.",
+      "ask_teammate": "Works when the team has more than one person."
     },
     "mcp": "{server}: {tool}"
   },
@@ -161,7 +163,17 @@
     "retrying": "Retrying…",
     "retry": "Try again",
     "howWeWork": "How we work",
-    "youApprove": "You approve"
+    "youApprove": "You approve",
+    "openRequest": "Anything in our area",
+    "openRequestHint": "Describe what you need. {lead} reads it and picks who does what, in what order.",
+    "remove": {
+      "label": "Remove team",
+      "question": "Remove {team}?",
+      "detail": "Its people, room and every delivery are deleted. You can hire the team again later, starting fresh. This can't be undone.",
+      "confirm": "Remove team",
+      "keep": "Keep team",
+      "working": "Removing…"
+    }
   },
   "room": {
     "label": "Team room",
@@ -175,7 +187,12 @@
     "composerPlaceholder": "Talk to the team…",
     "send": "Send",
     "mentionHint": "Use @ to call someone in.",
-    "mentionHintExample": "Use @ to call someone in, like @{example}."
+    "mentionHintExample": "Use @ to call someone in, like @{example}.",
+    "typing": "{name} is typing…",
+    "sending": "sending…",
+    "workingOn": "{name} is working: {task}",
+    "newMessages": "{count, plural, one {# new message} other {# new messages}}",
+    "leadAnswers": "The team lead answers. Use @ to ask someone else, like @{example}."
   },
   "delivery": {
     "fallbackTitle": "Delivery",
@@ -195,7 +212,19 @@
     "thread": "Conversation about this delivery",
     "download": "Download .md",
     "toNotion": "Send to Notion",
-    "openNotion": "Open in Notion ↗"
+    "openNotion": "Open in Notion ↗",
+    "manage": {
+      "cancel": "Cancel",
+      "cancelQuestion": "Cancel this delivery?",
+      "cancelDetail": "The team stops working on it and it leaves the board. What was written so far stays on this page.",
+      "cancelConfirm": "Cancel delivery",
+      "delete": "Delete",
+      "deleteQuestion": "Delete this delivery?",
+      "deleteDetail": "Its versions, notes and conversation are deleted too. This can't be undone.",
+      "deleteConfirm": "Delete for good",
+      "keep": "Keep it",
+      "working": "Working…"
+    }
   },
   "decision": {
     "label": "Your decision",
@@ -225,15 +254,27 @@
     "deliveryContext": "{team} · {kind} · waiting for {age}",
     "review": "Review",
     "deny": "Don't allow",
-    "allow": "Allow"
+    "allow": "Allow",
+    "checkpoint": "<strong>{agent}</strong> wants your OK before the team goes on",
+    "continue": "Go on",
+    "stop": "Stop here"
   },
   "requestForm": {
     "placeholder": "Describe it the way you'd tell a colleague. E.g. an article about solar energy for homeowners, in a light tone.",
     "noTeams": "Hire a team to make your first request.",
     "whatYouNeed": "What do you need?",
     "team": "Team",
-    "kind": "Type of delivery",
-    "submit": "Ask the team"
+    "kind": "Type of delivery (optional)",
+    "submit": "Ask the team",
+    "teamDecides": "Team decides",
+    "teamDecidesHint": "Ask for anything in the team's area. The lead reads it and picks who does what.",
+    "outOfScope": {
+      "title": "That's outside what {team} does.",
+      "tryInstead": "Send it to:",
+      "sendTo": "{team}",
+      "sendToAgent": "{team} · {agent}",
+      "noTeam": "No team in your office does this yet. You can hire one in Hire a team."
+    }
   },
   "newRequest": {
     "title": "New request",
@@ -309,7 +350,7 @@
     },
     "otherProvider": "Other provider",
     "tiersTitle": "Models by profile",
-    "tiersIntro": "Every agent has a profile. Here you choose which model each profile uses, in the provider:model format.",
+    "tiersIntro": "Every agent has a profile. Pick the model each profile uses from the providers you connected.",
     "budget": "Monthly budget",
     "noLimit": "no limit set",
     "ofLimit": "of {limit}",
@@ -342,7 +383,10 @@
     "none": "none",
     "saveModels": "Save models",
     "monthlyLimit": "Monthly limit (US$)",
-    "noLimitPlaceholder": "no limit"
+    "noLimitPlaceholder": "no limit",
+    "modelCount": "{count, plural, =0 {no models listed} one {# model} other {# models}}",
+    "refreshModels": "Refresh models",
+    "refreshing": "Refreshing…"
   },
   "integrations": {
     "title": "Integrations",
@@ -445,7 +489,8 @@
     "allowed": "Allowed.",
     "refused": "Refused.",
     "integrationConnected": "Connected.",
-    "integrationTools": "Connected. Found {count, plural, one {# tool} other {# tools}}."
+    "integrationTools": "Connected. Found {count, plural, one {# tool} other {# tools}}.",
+    "deliveryCancelled": "Cancelled. The team stopped working on it."
   },
   "errors": {
     "generic": "Something went wrong. Try again.",
@@ -475,7 +520,8 @@
     "nothingToExport": "There's no text to export yet.",
     "connectNotion": "Connect Notion in Integrations to export.",
     "notionRefused": "Notion refused ({status}). Is the page shared with the integration?",
-    "unknownLocale": "That language isn't available."
+    "unknownLocale": "That language isn't available.",
+    "publicDemo": "This is a public demo, so it can't store keys or connect to other systems. Run your own copy to do that."
   },
   "workErrors": {
     "no_room": "This team has no room.",
@@ -490,6 +536,36 @@
     "feedback_too_short": "Say what you want to change.",
     "empty_message": "Write a message.",
     "team_not_found": "Team not found.",
-    "message_not_sent": "Couldn't send the message."
+    "message_not_sent": "Couldn't send the message.",
+    "delivery_closed": "This delivery is already finished or cancelled."
+  },
+  "modelPicker": {
+    "provider": "Provider",
+    "model": "Model",
+    "none": "None",
+    "chooseProvider": "Choose a provider",
+    "notConnected": "{provider} (not connected)",
+    "noModels": "No models listed",
+    "custom": "Custom…",
+    "customPlaceholder": "model id",
+    "fromList": "From list"
+  },
+  "flow": {
+    "kinds": {
+      "research": "Research",
+      "draft": "Writes",
+      "review": "Reviews",
+      "discuss": "Talk it over",
+      "checkpoint": "You confirm",
+      "plan": "Plans",
+      "parallel": "In parallel",
+      "combine": "Combines",
+      "decides": "Picks the steps"
+    },
+    "loop": "back to {name}, up to {rounds} rounds",
+    "approve": "You approve"
+  },
+  "publicDemo": {
+    "banner": "Public demo: teams answer with sample text, at no cost. Run your own copy to connect real models."
   }
 }

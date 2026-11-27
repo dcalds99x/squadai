@@ -12,11 +12,13 @@ import {
 import { useTranslations } from "next-intl";
 import { useActionState, useState, useTransition } from "react";
 import { type ActionState, setToolPolicyAction, updateAgentAction } from "@/app/(office)/actions";
+import { type ModelOption, ModelPicker } from "@/components/model-picker";
 
 export function BrainForm({
   agent,
   canEdit,
   tierDefaults,
+  options,
 }: {
   agent: {
     id: string;
@@ -29,6 +31,7 @@ export function BrainForm({
   };
   canEdit: boolean;
   tierDefaults: Record<ModelTier, TierModels>;
+  options: ModelOption[];
 }) {
   const t = useTranslations("agent.brain");
   const tc = useTranslations("common");
@@ -110,24 +113,28 @@ export function BrainForm({
           {advanced ? t("hideCustom") : t("useCustom")}
         </button>
         <div className={advanced ? "flex flex-col gap-3" : "hidden"}>
-          <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-muted">
+          <div className="flex flex-col gap-1.5 text-[13px] font-semibold text-muted">
             {t("primary")}
-            <input
+            <ModelPicker
+              label={t("primary")}
               name="model"
               defaultValue={agent.model}
-              placeholder={t("primaryPlaceholder")}
-              className="h-11 rounded-xl border border-line-strong px-3 font-mono text-sm text-ink"
+              options={options}
+              allowNone
+              disabled={!canEdit}
             />
-          </label>
-          <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-muted">
+          </div>
+          <div className="flex flex-col gap-1.5 text-[13px] font-semibold text-muted">
             {t("fallback")}
-            <input
+            <ModelPicker
+              label={t("fallback")}
               name="fallbackModel"
               defaultValue={agent.fallbackModel}
-              placeholder={t("fallbackPlaceholder")}
-              className="h-11 rounded-xl border border-line-strong px-3 font-mono text-sm text-ink"
+              options={options}
+              allowNone
+              disabled={!canEdit}
             />
-          </label>
+          </div>
         </div>
 
         <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-muted">

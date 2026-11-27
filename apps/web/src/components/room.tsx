@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { formatTime } from "@/lib/format";
 import { RoomComposer } from "./room-composer";
+import { type Activity, RoomFeed, RoomLiveProvider } from "./room-live";
 
 export interface RoomMessage {
   id: string;
@@ -22,14 +23,19 @@ export async function Room({
   people,
   working,
   timeZone,
-  agentNames,
+  agents,
+  activity,
+  userName,
 }: {
   teamId: string;
   messages: RoomMessage[];
   people: number;
   working: string[];
   timeZone: string;
-  agentNames: string[];
+  agents: { name: string; avatar: AvatarSpec }[];
+  /** Agents working on a step right now, and on what. */
+  activity: Activity[];
+  userName: string;
 }) {
   const [t, locale] = await Promise.all([getTranslations("room"), getLocale()]);
   const words: MessageWords = {
@@ -39,28 +45,36 @@ export async function Room({
     between: t("between"),
     system: (await getTranslations("common"))("system"),
   };
+  const recent = messages.slice(-30).map((m) => ({
+    id: m.id,
+    agentName: m.agentName,
+    fromUser: Boolean(m.userName && !m.agentName),
+    body: m.body,
+  }));
   return (
-    <aside
-      aria-label={t("label")}
-      className="flex max-h-screen max-w-full flex-[1_1_340px] flex-col border-line border-l bg-surface lg:sticky lg:top-0 lg:max-w-[400px]"
-    >
-      <div className="flex flex-col gap-0.5 border-[#EEF0F6] border-b px-5 py-[18px]">
-        <strong>{t("label")}</strong>
-        <span className="text-[13px] text-subtle">
-          {t("people", { count: people })}
-          {working.length > 0 ? t("working", { names: formatList(working, locale) }) : ""}
-        </span>
-      </div>
-      {/* Reversed column: the scroll starts at the newest message, like any chat. */}
-      <ol className="flex flex-1 flex-col-reverse gap-4 overflow-y-auto px-5 py-[18px]">
-        {[...messages].reverse().map((m) => (
-          <li key={m.id}>
-            <MessageItem message={m} timeZone={timeZone} locale={locale} words={words} />
-          </li>
-        ))}
-      </ol>
-      <RoomComposer teamId={teamId} agentNames={agentNames} />
-    </aside>
+    <RoomLiveProvider recent={recent} agents={agents}>
+      <aside
+        aria-label={t("label")}
+        className="flex max-h-[80vh] max-w-full flex-[1_1_340px] flex-col border-line border-l bg-surface lg:max-h-none lg:min-h-0 lg:max-w-[400px]"
+      >
+        <div className="flex flex-col gap-0.5 border-[#EEF0F6] border-b px-5 py-[18px]">
+          <strong>{t("label")}</strong>
+          <span className="text-[13px] text-subtle">
+            {t("people", { count: people })}
+            {working.length > 0 ? t("working", { names: formatList(working, locale) }) : ""}
+          </span>
+        </div>
+        {/* Reversed column: the scroll starts at the newest message, like any chat. */}
+        <RoomFeed activity={activity} userName={userName}>
+          {[...messages].reverse().map((m) => (
+            <li key={m.id}>
+              <MessageItem message={m} timeZone={timeZone} locale={locale} words={words} />
+            </li>
+          ))}
+        </RoomFeed>
+        <RoomComposer teamId={teamId} agentNames={agents.map((a) => a.name)} />
+      </aside>
+    </RoomLiveProvider>
   );
 }
 

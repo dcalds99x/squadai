@@ -10,11 +10,15 @@ import {
   TOOL_POLICIES,
   type WorkspaceSettings,
 } from "@squadai/core";
-import { encryptSecret, maskSecret, parseMasterKey } from "@squadai/core/crypto";
+import { decryptSecret, encryptSecret, maskSecret, parseMasterKey } from "@squadai/core/crypto";
 import { getDb, hireTeam, schema } from "@squadai/db";
 import {
   approveDelivery,
+  cancelDelivery,
+  checkScope,
   createRequest,
+  deleteDelivery,
+  deleteTeam,
   notify,
   postUserMessage,
   requestChanges,
@@ -25,10 +29,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
-import { ActionError, type ActionState, attempt, requireManager } from "@/lib/action";
+import {
+  ActionError,
+  type ActionState,
+  attempt,
+  refuseInPublicDemo,
+  requireManager,
+} from "@/lib/action";
+import { getContentText } from "@/lib/content";
 import { env } from "@/lib/env";
 import { parseDecimal } from "@/lib/format";
 import { enqueueReply, enqueueRun } from "@/lib/queue";
+import { workspaceContext } from "@/lib/secrets";
 import { requireOffice } from "@/lib/session";
 
 export type { ActionState };
@@ -40,20 +52,47 @@ export async function createRequestAction(_: ActionState, form: FormData): Promi
   const result = await attempt(async () => {
     const { user, workspace } = await requireOffice();
     const db = getDb();
-    const teamId = String(form.get("teamId") ?? "");
+    // "Send to <team>" after a scope refusal: the suggested team decides how to do it.
+    const sentTo = String(form.get("sendTo") ?? "");
+    const teamId = sentTo || String(form.get("teamId") ?? "");
+    const playbookId = sentTo ? null : String(form.get("playbookId") ?? "") || null;
+    const prompt = String(form.get("prompt") ?? "");
+
+    if (!sentTo && prompt.trim().length >= 5) {
+      const verdict = await checkScope(
+        db,
+        { workspaceId: workspace.id, teamId, prompt },
+        await workspaceContext(workspace.id),
+      );
+      if (verdict.fit === "out") {
+        const text = await getContentText();
+        return {
+          outOfScope: {
+            reason: verdict.reason,
+            alternatives: verdict.alternatives.map((a) => ({
+              teamId: a.teamId,
+              teamName: text.c(a.teamName),
+              agentName: a.agentName,
+            })),
+          },
+        };
+      }
+    }
+
     const created = await createRequest(db, {
       workspaceId: workspace.id,
       teamId,
-      playbookId: String(form.get("playbookId") ?? ""),
+      playbookId,
       userId: user.id,
-      prompt: String(form.get("prompt") ?? ""),
+      prompt,
     });
     await enqueueRun({ requestId: created.requestId });
     const [t] = await db
       .select({ slug: schema.team.slug })
       .from(schema.team)
       .where(eq(schema.team.id, teamId));
-    redirectTo = String(form.get("stay") ?? "") === "1" ? null : `/teams/${t?.slug ?? ""}`;
+    redirectTo =
+      String(form.get("stay") ?? "") === "1" && !sentTo ? null : `/teams/${t?.slug ?? ""}`;
     revalidatePath("/", "layout");
     return { ok: true, message: (await getTranslations("actions"))("requestSent") };
   });
@@ -88,6 +127,65 @@ export async function requestChangesAction(_: ActionState, form: FormData): Prom
     revalidatePath("/", "layout");
     return { ok: true, message: (await getTranslations("actions"))("changesSent") };
   });
+}
+
+/** Stops the team's work on a delivery; it stays on record as cancelled. */
+export async function cancelDeliveryAction(deliveryId: string): Promise<ActionState> {
+  return attempt(async () => {
+    const { user, workspace } = await requireOffice();
+    const { followUps } = await cancelDelivery(getDb(), {
+      workspaceId: workspace.id,
+      deliveryId,
+      userId: user.id,
+    });
+    for (const job of followUps) await enqueueRun(job);
+    revalidatePath("/", "layout");
+    return { ok: true, message: (await getTranslations("actions"))("deliveryCancelled") };
+  });
+}
+
+/** Deletes a delivery with everything behind it, then goes back to its team. */
+export async function deleteDeliveryAction(deliveryId: string): Promise<ActionState> {
+  let back: string | null = null;
+  const result = await attempt(async () => {
+    const { user, workspace } = await requireOffice();
+    const db = getDb();
+    const [owner] = await db
+      .select({ slug: schema.team.slug })
+      .from(schema.delivery)
+      .innerJoin(schema.team, eq(schema.team.id, schema.delivery.teamId))
+      .where(and(eq(schema.delivery.id, deliveryId), eq(schema.team.workspaceId, workspace.id)));
+    const { followUps } = await deleteDelivery(db, {
+      workspaceId: workspace.id,
+      deliveryId,
+      userId: user.id,
+    });
+    for (const job of followUps) await enqueueRun(job);
+    revalidatePath("/", "layout");
+    back = owner ? `/teams/${owner.slug}` : "/";
+    return { ok: true };
+  });
+  if (back) redirect(back);
+  return result;
+}
+
+/** Removes a team and all its work. Managers only. */
+export async function deleteTeamAction(teamId: string): Promise<ActionState> {
+  let done = false;
+  const result = await attempt(async () => {
+    const { user, workspace } = await requireManager();
+    const { followUps } = await deleteTeam(getDb(), {
+      workspaceId: workspace.id,
+      teamId,
+      userId: user.id,
+    });
+    for (const job of followUps) await enqueueRun(job);
+    revalidatePath("/", "layout");
+    done = true;
+    return { ok: true };
+  });
+  if (done) redirect("/");
+  return result;
 }
 
 export async function retryRequestAction(requestId: string): Promise<ActionState> {
@@ -125,9 +223,10 @@ export async function sendRoomMessageAction(_: ActionState, form: FormData): Pro
       userId: user.id,
       body: String(form.get("body") ?? ""),
     });
-    for (const agentId of posted.mentionedAgentIds)
+    for (const agentId of posted.replyAgentIds)
       await enqueueReply({ messageId: posted.messageId, agentId });
-    return { ok: true };
+    // The room shows them typing until their answer arrives.
+    return { ok: true, replying: posted.replyAgentNames };
   });
 }
 
@@ -240,6 +339,7 @@ const KEY_OPTIONAL: Provider[] = ["ollama", "openai-compatible"];
 
 export async function saveProviderAction(_: ActionState, form: FormData): Promise<ActionState> {
   return attempt(async () => {
+    refuseInPublicDemo();
     const { user, workspace } = await requireManager();
     const provider = z.enum(PROVIDERS).parse(form.get("provider"));
     const apiKey = String(form.get("apiKey") ?? "").trim();
@@ -281,6 +381,7 @@ export async function saveProviderAction(_: ActionState, form: FormData): Promis
         encryptedKey: apiKey ? encryptSecret(apiKey, masterKey) : null,
         keyHint: apiKey ? maskSecret(apiKey) : null,
         baseUrl,
+        models: check.models,
         lastCheckedAt: new Date(),
       });
       await tx.insert(schema.auditLog).values({
@@ -292,6 +393,46 @@ export async function saveProviderAction(_: ActionState, form: FormData): Promis
       });
     });
     revalidatePath("/models");
+    const t = await getTranslations("actions");
+    return { ok: true, message: t("providerConnected", { count: check.models.length }) };
+  });
+}
+
+/** Asks a connected provider for its models again, so the pickers show what is new. */
+export async function refreshProviderModelsAction(credentialId: string): Promise<ActionState> {
+  return attempt(async () => {
+    refuseInPublicDemo();
+    const { workspace } = await requireManager();
+    const db = getDb();
+    const [cred] = await db
+      .select()
+      .from(schema.providerCredential)
+      .where(
+        and(
+          eq(schema.providerCredential.id, credentialId),
+          eq(schema.providerCredential.workspaceId, workspace.id),
+        ),
+      );
+    if (!cred) throw new ActionError("connectFailed");
+    let apiKey: string | null = null;
+    if (cred.encryptedKey) {
+      try {
+        apiKey = decryptSecret(cred.encryptedKey, parseMasterKey(env().SQUADAI_MASTER_KEY));
+      } catch {
+        throw new ActionError("noMasterKey");
+      }
+    }
+    const check = await checkConnection(
+      { provider: cred.provider, apiKey, baseUrl: cred.baseUrl },
+      await getLocale(),
+    );
+    if (!check.ok) return { error: check.error ?? undefined };
+    await db
+      .update(schema.providerCredential)
+      .set({ models: check.models, lastCheckedAt: new Date() })
+      .where(eq(schema.providerCredential.id, cred.id));
+    revalidatePath("/models");
+    revalidatePath("/agents", "layout");
     const t = await getTranslations("actions");
     return { ok: true, message: t("providerConnected", { count: check.models.length }) };
   });
@@ -341,6 +482,7 @@ async function updateSettings(
 
 export async function setDemoModeAction(on: boolean): Promise<ActionState> {
   return attempt(async () => {
+    if (!on) refuseInPublicDemo();
     const { workspace } = await requireManager();
     await updateSettings(workspace.id, (s) => ({ ...s, demoMode: on }));
     revalidatePath("/", "layout");

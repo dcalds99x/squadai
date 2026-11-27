@@ -1,10 +1,23 @@
 id: code-review
-version: 4
+version: 5
 locale: en
 department: Engineering
 name: Code review
 description: We review your pull requests for bugs, security risks and missing tests.
 color: "#0E8A6A"
+lead: rui
+scope:
+  does:
+    - Pull request reviews
+    - Bug investigation and fixes
+    - Missing tests and test plans
+    - Security review of code
+    - Explaining code and suggesting refactors
+  doesNot:
+    - Marketing content, articles or newsletters
+    - Market or pricing research
+    - Merging or deploying code on its own
+    - Legal advice
 agents:
   - key: rui
     name: Rui
@@ -55,11 +68,44 @@ playbooks:
         task: Read the pull request, delegate the test analysis and write the final summary.
       - agent: nina
         task: Find the missing test cases and propose the main ones.
+  - key: investigar-bug
+    name: Investigate a bug
+    description: From the symptom to a proposed fix with the test that proves it.
+    mode: sequential
+    estimatedHumanMinutes: 120
+    approval: true
+    steps:
+      - agent: nina
+        task: Reproduce the failure and describe exactly when it happens.
+        kind: research
+      - agent: rui
+        task: Agree on the most likely cause before proposing a fix.
+        kind: discuss
+        with: [nina]
+      - agent: rui
+        task: Propose the fix, with the code change and why it works.
+        kind: draft
+      - agent: nina
+        task: Check the fix covers the failure and add the test that proves it.
+        kind: review
+        rounds: 2
 translations:
   pt-BR:
     department: Desenvolvimento
     name: Revisão de código
     description: A gente revisa seus pull requests procurando bugs, riscos de segurança e testes faltando.
+    scope:
+      does:
+        - Revisão de pull requests
+        - Investigação e correção de bugs
+        - Testes faltando e planos de teste
+        - Revisão de segurança do código
+        - Explicar código e sugerir refatorações
+      doesNot:
+        - Conteúdo de marketing, artigos ou newsletters
+        - Pesquisa de mercado ou de preços
+        - Fazer merge ou deploy por conta própria
+        - Orientação jurídica
     agents:
       rui:
         role: Revisor de código
@@ -93,3 +139,11 @@ translations:
         tasks:
           - Leia o pull request, delegue a análise de testes e escreva o resumo final.
           - Encontre os casos de teste que faltam e proponha os principais.
+      investigar-bug:
+        name: Investigar um bug
+        description: Do sintoma a uma correção proposta, com o teste que prova.
+        tasks:
+          - Reproduza a falha e descreva exatamente quando ela acontece.
+          - Combinem a causa mais provável antes de propor a correção.
+          - Proponha a correção, com a mudança no código e por que ela funciona.
+          - Confira se a correção cobre a falha e adicione o teste que prova.

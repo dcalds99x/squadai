@@ -119,6 +119,23 @@ const PT_BR = {
     `Oi! Aqui é ${name}. Anotado, vou levar isso em conta no próximo trabalho. (modo demonstração)`,
   /** How a review prompt introduces the text, for callers that send no `hint.reviewing`. */
   reviewLabel: "Texto para revisar:",
+  /** A discussion, one line per turn. */
+  discussion: [
+    (subject: string) => `Eu abriria com o ponto mais forte sobre ${subject}, logo no começo.`,
+    (subject: string) =>
+      `Concordo. E deixaria claro para quem é: quem está começando com ${subject}.`,
+    () => "Fechado para mim. Só cuidaria para cada número ter fonte.",
+  ],
+  discussionSummary: (subject: string) => [
+    `- Abrimos com o ponto mais forte sobre ${subject}.`,
+    "- Falamos com quem está começando.",
+    "- Todo número com fonte.",
+  ],
+  teammateQuestion: (subject: string) => `Qual é o ponto que não pode faltar sobre ${subject}?`,
+  sendBack: "A abertura ainda está genérica. Comece pelo problema de quem lê.",
+  triageTitle: "Entrega sob medida",
+  chatStatus: (name: string, title: string, state: string) =>
+    `Oi! Aqui é ${name}. Sobre “${title}”: ${state}. Se quiser, abra a entrega pelo quadro ao lado. (modo demonstração)`,
 };
 
 /** The demo model's templated text, per workspace language. */
@@ -189,6 +206,21 @@ const WORDS: Record<Locale, typeof PT_BR> = {
     chat: (name) =>
       `Hi! It's ${name}. Noted, I'll keep that in mind for the next piece of work. (demo mode)`,
     reviewLabel: "Text to review:",
+    discussion: [
+      (subject) => `I'd open with the strongest point about ${subject}, right at the top.`,
+      (subject) => `Agreed. And I'd make it clear who it's for: people new to ${subject}.`,
+      () => "Works for me. Just make sure every number has a source.",
+    ],
+    discussionSummary: (subject) => [
+      `- We open with the strongest point about ${subject}.`,
+      "- We write for people who are just starting.",
+      "- Every number gets a source.",
+    ],
+    teammateQuestion: (subject) => `What's the one thing we can't leave out about ${subject}?`,
+    sendBack: "The opening is still generic. Start from the reader's problem.",
+    triageTitle: "Tailored delivery",
+    chatStatus: (name, title, state) =>
+      `Hi! It's ${name}. On “${title}”: ${state}. You can open it from the board. (demo mode)`,
   },
 };
 
@@ -223,6 +255,15 @@ function nextToolCall(request: ChatRequest, hint: Hint, words: Words): string | 
     }
     if (tools.includes("web_search") && !used.has("web_search")) {
       return formatToolCall("web_search", { query: subject });
+    }
+  }
+  if (hint.kind === "draft" && tools.includes("ask_teammate") && !used.has("ask_teammate")) {
+    const other = hint.teammates?.find((t) => t.name !== hint.agentName);
+    if (other && !hint.rework) {
+      return formatToolCall("ask_teammate", {
+        teammate: other.key,
+        question: words.teammateQuestion(subject),
+      });
     }
   }
   const pr = PR_LINK.exec(hint.topic);
@@ -283,6 +324,29 @@ function write(request: ChatRequest): string {
   switch (hint.kind) {
     case "research":
       return [...words.research(topic), findings(request, words)].join("\n");
+    case "triage": {
+      // A small, sensible flow from whoever is on the team. Keys are protocol tokens.
+      const team = hint.teammates ?? [];
+      const lead = team.find((t) => t.name === hint.agentName) ?? team[0];
+      const others = team.filter((t) => t !== lead);
+      const steps: Record<string, unknown>[] = [];
+      if (others[0])
+        steps.push({ agent: others[0].key, kind: "research", task: words.planTask(subject) });
+      if (lead) steps.push({ agent: lead.key, kind: "draft", task: topic });
+      const reviewer = others[1] ?? others[0];
+      if (reviewer) steps.push({ agent: reviewer.key, kind: "review", task: topic, rounds: 2 });
+      return JSON.stringify({ fit: "in", title: words.triageTitle, steps });
+    }
+    case "discussion": {
+      // The runner numbers discussion turns in `round`; a teammate's quick answer has none.
+      const turn = (hint.round ?? 1) - 1;
+      const line = words.discussion[Math.min(turn, words.discussion.length - 1)];
+      return line ? line(subject) : "";
+    }
+    case "summary":
+      return words.discussionSummary(subject).join("\n");
+    case "scope":
+      return JSON.stringify({ fit: "in", reason: "", better: "none" });
     case "plan": {
       const others = (hint.teammates ?? []).filter((t) => t.name !== hint.agentName);
       // The plan's keys are protocol tokens, the same in every locale (see parsePlan).
@@ -302,19 +366,32 @@ function write(request: ChatRequest): string {
     case "draft":
       return [...words.draft(topic, subject), "", words.signature].join("\n");
     case "review": {
+      // A review that may send the draft back does so once, then approves.
+      const loops = (hint.rounds ?? 1) > 1;
+      if (loops && (hint.round ?? 1) === 1) {
+        return ["VERDICT: revise", "", REVIEW_NOTES_MARKER, `${topic} :: ${words.sendBack}`].join(
+          "\n",
+        );
+      }
       const reviewed = words.edits.reduce(
         (text, edit) => text.replace(edit.from, edit.to),
         textToReview(request),
       );
       return [
+        ...(loops ? ["VERDICT: approve", ""] : []),
         reviewed,
         "",
         REVIEW_NOTES_MARKER,
         ...words.edits.map((edit) => `${edit.to} :: ${edit.why}`),
       ].join("\n");
     }
-    default:
-      return words.chat(hint.agentName);
+    default: {
+      // Room replies get the team's work status: report the latest item.
+      const latest = /^- "(.+?)" \([^)]*\): ([^;]+);/m.exec(request.prompt);
+      return latest
+        ? words.chatStatus(hint.agentName, latest[1] ?? "", latest[2] ?? "")
+        : words.chat(hint.agentName);
+    }
   }
 }
 

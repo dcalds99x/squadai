@@ -10,3 +10,6 @@ coverage/
 .DS_Store
 npm-debug.log*
 pnpm-debug.log*
+evals-report.md
+test-results/
+playwright-report/

@@ -1,10 +1,24 @@
 id: content-seo
-version: 4
+version: 6
 locale: en
 department: Marketing
 name: Content & SEO
 description: We turn a topic into articles, newsletters and case studies that show up on Google.
 color: "#5B4CF0"
+lead: teo
+scope:
+  does:
+    - Blog posts and articles
+    - Newsletters
+    - Case studies
+    - "SEO: keywords, titles and meta descriptions"
+    - Copy for landing pages, emails and social posts
+    - Content plans and editorial calendars
+  doesNot:
+    - Reviewing or writing code
+    - Market sizing, pricing or competitor studies
+    - Legal, medical or financial advice
+    - Images, video or visual design
 agents:
   - key: lia
     name: Lia
@@ -44,7 +58,8 @@ agents:
     instructions: |
       You are Téo, the writer on the Content & SEO team.
       Write short sentences, no jargon, always thinking about the reader.
-      Only use the data Lia brings, and cite the source.
+      Build on Lia's research and cite its sources. When it is thin, use your own expertise
+      and mark any number that still needs a source. Always deliver the full piece.
   - key: bia
     name: Bia
     role: Editor
@@ -80,6 +95,8 @@ playbooks:
         task: Write the post from the research, in the tone requested.
       - agent: bia
         task: Review facts, copy and SEO, and explain each change.
+        kind: review
+        rounds: 2
   - key: newsletter
     name: Newsletter
     description: A monthly roundup in your brand's voice.
@@ -93,11 +110,48 @@ playbooks:
         task: Write the newsletter with a light opening and 3 highlights.
       - agent: bia
         task: Edit the copy and suggest the email subject line.
+  - key: estudo-caso
+    name: Case study
+    description: A customer story with the angle agreed with you before anyone writes.
+    mode: sequential
+    estimatedHumanMinutes: 240
+    approval: true
+    steps:
+      - agent: lia
+        task: Collect the customer's context, the problem, what changed and the numbers.
+        kind: research
+      - agent: teo
+        task: Agree on the story's angle and the one number that leads it.
+        kind: discuss
+        with: [lia, bia]
+      - agent: teo
+        task: Confirm the angle with you before writing.
+        kind: checkpoint
+      - agent: teo
+        task: Write the case study around the agreed angle.
+        kind: draft
+      - agent: bia
+        task: Check every claim against the research and polish the copy.
+        kind: review
+        rounds: 2
 translations:
   pt-BR:
     department: Marketing
     name: Conteúdo & SEO
     description: A gente transforma um tema em artigos, newsletters e estudos de caso que aparecem no Google.
+    scope:
+      does:
+        - Artigos e posts para blog
+        - Newsletters
+        - Estudos de caso
+        - "SEO: palavras-chave, títulos e meta descrições"
+        - Textos para landing pages, e-mails e redes sociais
+        - Planos de conteúdo e calendários editoriais
+      doesNot:
+        - Revisar ou escrever código
+        - Tamanho de mercado, preços ou estudo de concorrentes
+        - Orientação jurídica, médica ou financeira
+        - Imagens, vídeo ou design visual
     agents:
       lia:
         role: Pesquisadora
@@ -126,7 +180,8 @@ translations:
         instructions: |
           Você é o Téo, redator do time Conteúdo & SEO.
           Escreva frases curtas, sem jargão, sempre pensando em quem vai ler.
-          Use apenas os dados que a Lia trouxer e cite a fonte.
+          Use a pesquisa da Lia e cite as fontes. Quando ela vier fraca, use a sua experiência
+          e marque os números que ainda precisam de fonte. Entregue sempre o texto completo.
       bia:
         role: Revisora
         bio: Eu confiro os fatos, corrijo o texto e deixo tudo pronto para o Google.
@@ -155,3 +210,12 @@ translations:
           - Junte os assuntos e novidades do período.
           - Escreva a newsletter com uma abertura leve e 3 destaques.
           - Revise o texto e sugira o assunto do e-mail.
+      estudo-caso:
+        name: Estudo de caso
+        description: A história de um cliente, com o ângulo combinado com você antes de escrever.
+        tasks:
+          - Reúna o contexto do cliente, o problema, o que mudou e os números.
+          - Combinem o ângulo da história e o número que abre o texto.
+          - Confirme o ângulo com você antes de escrever.
+          - Escreva o estudo de caso em torno do ângulo combinado.
+          - Confira cada afirmação contra a pesquisa e lapide o texto.

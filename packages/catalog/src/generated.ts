@@ -4,12 +4,28 @@ import type { TeamTemplate } from "./schema.ts";
 export const TEAM_TEMPLATES: TeamTemplate[] = [
   {
     "id": "code-review",
-    "version": 4,
+    "version": 5,
     "locale": "en",
     "department": "Engineering",
     "name": "Code review",
     "description": "We review your pull requests for bugs, security risks and missing tests.",
     "color": "#0E8A6A",
+    "lead": "rui",
+    "scope": {
+      "does": [
+        "Pull request reviews",
+        "Bug investigation and fixes",
+        "Missing tests and test plans",
+        "Security review of code",
+        "Explaining code and suggesting refactors"
+      ],
+      "doesNot": [
+        "Marketing content, articles or newsletters",
+        "Market or pricing research",
+        "Merging or deploying code on its own",
+        "Legal advice"
+      ]
+    },
     "agents": [
       {
         "key": "rui",
@@ -70,6 +86,40 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
             "task": "Find the missing test cases and propose the main ones."
           }
         ]
+      },
+      {
+        "key": "investigar-bug",
+        "name": "Investigate a bug",
+        "description": "From the symptom to a proposed fix with the test that proves it.",
+        "mode": "sequential",
+        "estimatedHumanMinutes": 120,
+        "approval": true,
+        "steps": [
+          {
+            "agent": "nina",
+            "task": "Reproduce the failure and describe exactly when it happens.",
+            "kind": "research"
+          },
+          {
+            "agent": "rui",
+            "task": "Agree on the most likely cause before proposing a fix.",
+            "kind": "discuss",
+            "with": [
+              "nina"
+            ]
+          },
+          {
+            "agent": "rui",
+            "task": "Propose the fix, with the code change and why it works.",
+            "kind": "draft"
+          },
+          {
+            "agent": "nina",
+            "task": "Check the fix covers the failure and add the test that proves it.",
+            "kind": "review",
+            "rounds": 2
+          }
+        ]
       }
     ],
     "translations": {
@@ -111,19 +161,61 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
               "Leia o pull request, delegue a análise de testes e escreva o resumo final.",
               "Encontre os casos de teste que faltam e proponha os principais."
             ]
+          },
+          "investigar-bug": {
+            "name": "Investigar um bug",
+            "description": "Do sintoma a uma correção proposta, com o teste que prova.",
+            "tasks": [
+              "Reproduza a falha e descreva exatamente quando ela acontece.",
+              "Combinem a causa mais provável antes de propor a correção.",
+              "Proponha a correção, com a mudança no código e por que ela funciona.",
+              "Confira se a correção cobre a falha e adicione o teste que prova."
+            ]
           }
+        },
+        "scope": {
+          "does": [
+            "Revisão de pull requests",
+            "Investigação e correção de bugs",
+            "Testes faltando e planos de teste",
+            "Revisão de segurança do código",
+            "Explicar código e sugerir refatorações"
+          ],
+          "doesNot": [
+            "Conteúdo de marketing, artigos ou newsletters",
+            "Pesquisa de mercado ou de preços",
+            "Fazer merge ou deploy por conta própria",
+            "Orientação jurídica"
+          ]
         }
       }
     }
   },
   {
     "id": "content-seo",
-    "version": 4,
+    "version": 6,
     "locale": "en",
     "department": "Marketing",
     "name": "Content & SEO",
     "description": "We turn a topic into articles, newsletters and case studies that show up on Google.",
     "color": "#5B4CF0",
+    "lead": "teo",
+    "scope": {
+      "does": [
+        "Blog posts and articles",
+        "Newsletters",
+        "Case studies",
+        "SEO: keywords, titles and meta descriptions",
+        "Copy for landing pages, emails and social posts",
+        "Content plans and editorial calendars"
+      ],
+      "doesNot": [
+        "Reviewing or writing code",
+        "Market sizing, pricing or competitor studies",
+        "Legal, medical or financial advice",
+        "Images, video or visual design"
+      ]
+    },
     "agents": [
       {
         "key": "lia",
@@ -163,7 +255,7 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
         "tools": {
           "web_search": "allow"
         },
-        "instructions": "You are Téo, the writer on the Content & SEO team.\nWrite short sentences, no jargon, always thinking about the reader.\nOnly use the data Lia brings, and cite the source.\n"
+        "instructions": "You are Téo, the writer on the Content & SEO team.\nWrite short sentences, no jargon, always thinking about the reader.\nBuild on Lia's research and cite its sources. When it is thin, use your own expertise\nand mark any number that still needs a source. Always deliver the full piece.\n"
       },
       {
         "key": "bia",
@@ -204,7 +296,9 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
           },
           {
             "agent": "bia",
-            "task": "Review facts, copy and SEO, and explain each change."
+            "task": "Review facts, copy and SEO, and explain each change.",
+            "kind": "review",
+            "rounds": 2
           }
         ]
       },
@@ -227,6 +321,46 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
           {
             "agent": "bia",
             "task": "Edit the copy and suggest the email subject line."
+          }
+        ]
+      },
+      {
+        "key": "estudo-caso",
+        "name": "Case study",
+        "description": "A customer story with the angle agreed with you before anyone writes.",
+        "mode": "sequential",
+        "estimatedHumanMinutes": 240,
+        "approval": true,
+        "steps": [
+          {
+            "agent": "lia",
+            "task": "Collect the customer's context, the problem, what changed and the numbers.",
+            "kind": "research"
+          },
+          {
+            "agent": "teo",
+            "task": "Agree on the story's angle and the one number that leads it.",
+            "kind": "discuss",
+            "with": [
+              "lia",
+              "bia"
+            ]
+          },
+          {
+            "agent": "teo",
+            "task": "Confirm the angle with you before writing.",
+            "kind": "checkpoint"
+          },
+          {
+            "agent": "teo",
+            "task": "Write the case study around the agreed angle.",
+            "kind": "draft"
+          },
+          {
+            "agent": "bia",
+            "task": "Check every claim against the research and polish the copy.",
+            "kind": "review",
+            "rounds": 2
           }
         ]
       }
@@ -260,7 +394,7 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
             ],
             "prefers": "A pesquisa pronta da Lia, o público e o tom desejado.",
             "never": "Publicar sem sua aprovação ou inventar números sem fonte.",
-            "instructions": "Você é o Téo, redator do time Conteúdo & SEO.\nEscreva frases curtas, sem jargão, sempre pensando em quem vai ler.\nUse apenas os dados que a Lia trouxer e cite a fonte.\n"
+            "instructions": "Você é o Téo, redator do time Conteúdo & SEO.\nEscreva frases curtas, sem jargão, sempre pensando em quem vai ler.\nUse a pesquisa da Lia e cite as fontes. Quando ela vier fraca, use a sua experiência\ne marque os números que ainda precisam de fonte. Entregue sempre o texto completo.\n"
           },
           "bia": {
             "role": "Revisora",
@@ -293,19 +427,61 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
               "Escreva a newsletter com uma abertura leve e 3 destaques.",
               "Revise o texto e sugira o assunto do e-mail."
             ]
+          },
+          "estudo-caso": {
+            "name": "Estudo de caso",
+            "description": "A história de um cliente, com o ângulo combinado com você antes de escrever.",
+            "tasks": [
+              "Reúna o contexto do cliente, o problema, o que mudou e os números.",
+              "Combinem o ângulo da história e o número que abre o texto.",
+              "Confirme o ângulo com você antes de escrever.",
+              "Escreva o estudo de caso em torno do ângulo combinado.",
+              "Confira cada afirmação contra a pesquisa e lapide o texto."
+            ]
           }
+        },
+        "scope": {
+          "does": [
+            "Artigos e posts para blog",
+            "Newsletters",
+            "Estudos de caso",
+            "SEO: palavras-chave, títulos e meta descrições",
+            "Textos para landing pages, e-mails e redes sociais",
+            "Planos de conteúdo e calendários editoriais"
+          ],
+          "doesNot": [
+            "Revisar ou escrever código",
+            "Tamanho de mercado, preços ou estudo de concorrentes",
+            "Orientação jurídica, médica ou financeira",
+            "Imagens, vídeo ou design visual"
+          ]
         }
       }
     }
   },
   {
     "id": "market-research",
-    "version": 4,
+    "version": 5,
     "locale": "en",
     "department": "Research",
     "name": "Market research",
     "description": "We find out what the market is doing and bring back the numbers, with sources.",
     "color": "#1D6FD6",
+    "lead": "clara",
+    "scope": {
+      "does": [
+        "Competitor analysis",
+        "Market size and trends",
+        "Pricing research",
+        "Customer segments and personas",
+        "Answering market questions with sources"
+      ],
+      "doesNot": [
+        "Writing blog posts, newsletters or marketing copy",
+        "Reviewing or writing code",
+        "Legal or financial advice"
+      ]
+    },
     "agents": [
       {
         "key": "ivo",
@@ -382,6 +558,40 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
             "task": "Answer the question with public data and its sources."
           }
         ]
+      },
+      {
+        "key": "estudo-precos",
+        "name": "Pricing study",
+        "description": "Where your price should sit, argued from the numbers and double-checked.",
+        "mode": "sequential",
+        "estimatedHumanMinutes": 300,
+        "approval": true,
+        "steps": [
+          {
+            "agent": "ivo",
+            "task": "Collect competitors' public prices, plans and what each includes.",
+            "kind": "research"
+          },
+          {
+            "agent": "clara",
+            "task": "Agree on which competitors and price points really compare.",
+            "kind": "discuss",
+            "with": [
+              "ivo"
+            ]
+          },
+          {
+            "agent": "clara",
+            "task": "Recommend a price range and explain the trade-offs.",
+            "kind": "draft"
+          },
+          {
+            "agent": "ivo",
+            "task": "Check every number against its source and flag anything weak.",
+            "kind": "review",
+            "rounds": 2
+          }
+        ]
       }
     ],
     "translations": {
@@ -431,7 +641,31 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
             "tasks": [
               "Responda a pergunta com dados públicos e as fontes."
             ]
+          },
+          "estudo-precos": {
+            "name": "Estudo de preços",
+            "description": "Onde o seu preço deve ficar, argumentado com números e conferido duas vezes.",
+            "tasks": [
+              "Levante os preços públicos, planos e o que cada concorrente inclui.",
+              "Combinem quais concorrentes e faixas de preço realmente se comparam.",
+              "Recomende uma faixa de preço e explique os prós e contras.",
+              "Confira cada número contra a fonte e aponte o que estiver fraco."
+            ]
           }
+        },
+        "scope": {
+          "does": [
+            "Análise de concorrentes",
+            "Tamanho e tendências de mercado",
+            "Pesquisa de preços",
+            "Segmentos de clientes e personas",
+            "Respostas a perguntas de mercado, com fontes"
+          ],
+          "doesNot": [
+            "Escrever artigos, newsletters ou textos de marketing",
+            "Revisar ou escrever código",
+            "Orientação jurídica ou financeira"
+          ]
         }
       }
     }

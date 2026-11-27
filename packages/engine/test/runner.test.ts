@@ -2,22 +2,33 @@
  * End-to-end runs against a real Postgres with the demo model.
  * Skipped without DATABASE_URL (CI provides one).
  */
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { getTeamTemplate } from "@squadai/catalog";
 import { createDb, createWorkspaceForUser, getOfficeMetrics, hireTeam, schema } from "@squadai/db";
 import { and, asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   approveDelivery,
+  cancelDelivery,
+  checkScope,
   createRequest,
+  decideToolApproval as decideApproval,
   decideToolApproval,
+  defaultFlow,
+  deleteDelivery,
+  deleteTeam,
   loadModelContext,
+  parseFlowPlan,
   parsePlan,
   parseReview,
+  parseVerdict,
   postUserMessage,
   type RunInput,
   replyInRoom,
   requestChanges,
+  resolveFlow,
   runRequest,
   scoreText,
   suggestRoutes,
@@ -50,6 +61,72 @@ describe("parsers", () => {
   it("still reads plans written with the legacy Portuguese keys", () => {
     expect(parsePlan('{"tarefas":[{"agente":"nina","tarefa":"Testes"}]}', ["nina"])).toEqual([
       { agentKey: "nina", task: "Testes" },
+    ]);
+  });
+
+  it("reads a reviewer's verdict", () => {
+    expect(parseVerdict("VERDICT: revise\nnotes")).toEqual({ revise: true, text: "notes" });
+    expect(parseVerdict("**VERDICT**: approve\nText")).toEqual({ revise: false, text: "Text" });
+    expect(parseVerdict("Just the text")).toEqual({ revise: false, text: "Just the text" });
+  });
+
+  it("fills in step kinds the way early playbooks meant them", () => {
+    const kinds = (n: number) =>
+      resolveFlow(Array.from({ length: n }, (_, i) => ({ agentKey: `a${i}`, task: "t" }))).map(
+        (s) => s.kind,
+      );
+    expect(kinds(1)).toEqual(["draft"]);
+    expect(kinds(2)).toEqual(["research", "draft"]);
+    expect(kinds(3)).toEqual(["research", "draft", "review"]);
+  });
+
+  it("reads the lead's plan and keeps it safe", () => {
+    const keys = ["lia", "teo", "bia"];
+    expect(parseFlowPlan('{"fit":"out","reason":"Not our area."}', keys, "teo")).toEqual({
+      fit: "out",
+      reason: "Not our area.",
+    });
+    const plan = parseFlowPlan(
+      JSON.stringify({
+        fit: "in",
+        title: "Launch email",
+        steps: [
+          { agent: "bia", kind: "review", task: "too early" },
+          { agent: "lia", kind: "research", task: "Find facts" },
+          { agent: "zed", kind: "draft", task: "unknown agent" },
+          { agent: "teo", kind: "discuss", task: "Angle", with: ["lia", "teo", "zed"] },
+          { agent: "teo", kind: "draft", task: "Write" },
+          { agent: "bia", kind: "review", task: "Check", rounds: 9 },
+        ],
+      }),
+      keys,
+      "teo",
+    );
+    expect(plan).toEqual({
+      fit: "in",
+      title: "Launch email",
+      steps: [
+        { agentKey: "lia", kind: "research", task: "Find facts" },
+        { agentKey: "teo", kind: "discuss", task: "Angle", with: ["lia"] },
+        { agentKey: "teo", kind: "draft", task: "Write" },
+        { agentKey: "bia", kind: "review", task: "Check", rounds: 3 },
+      ],
+    });
+    // Nothing that writes: the lead writes.
+    const research = parseFlowPlan(
+      '{"fit":"in","title":"X","steps":[{"agent":"lia","kind":"research","task":"Look"}]}',
+      keys,
+      "teo",
+    );
+    expect(research?.fit === "in" && research.steps.map((s) => s.kind)).toEqual([
+      "research",
+      "draft",
+    ]);
+    expect(parseFlowPlan("no json", keys, "teo")).toBeNull();
+    expect(defaultFlow(keys, "teo", "t").map((s) => `${s.agentKey}:${s.kind}`)).toEqual([
+      "lia:research",
+      "teo:draft",
+      "bia:review",
     ]);
   });
 
@@ -169,7 +246,12 @@ describe.skipIf(!url)("runner (Postgres + demo model)", () => {
       .from(schema.deliveryVersion)
       .where(eq(schema.deliveryVersion.deliveryId, deliveryId))
       .orderBy(asc(schema.deliveryVersion.number));
-    expect(versions.map((v) => v.label)).toEqual(["rascunho · Téo", "revisão · Bia"]);
+    // Bia sends the first draft back once (review loop), then approves.
+    expect(versions.map((v) => v.label)).toEqual([
+      "rascunho · Téo",
+      "ajuste · Téo",
+      "revisão · Bia",
+    ]);
     const messages = await db
       .select()
       .from(schema.message)
@@ -318,19 +400,30 @@ describe.skipIf(!url)("runner (Postgres + demo model)", () => {
   });
 
   it("lets a mentioned agent reply in the room", async () => {
-    const { messageId, mentionedAgentIds } = await postUserMessage(db, {
+    const { messageId, replyAgentIds } = await postUserMessage(db, {
       workspaceId,
       teamId: teams.seo as string,
       userId,
       body: "@teo deixa o tom bem leve, tá?",
     });
-    expect(mentionedAgentIds).toHaveLength(1);
-    await replyInRoom(deps, { messageId, agentId: mentionedAgentIds[0] as string });
+    expect(replyAgentIds).toHaveLength(1);
+    await replyInRoom(deps, { messageId, agentId: replyAgentIds[0] as string });
     const replies = await db
       .select()
       .from(schema.message)
-      .where(eq(schema.message.authorAgentId, mentionedAgentIds[0] as string));
-    expect(replies.some((m) => m.body.includes("Anotado"))).toBe(true);
+      .where(eq(schema.message.authorAgentId, replyAgentIds[0] as string));
+    // The reply knows where the work stands (here, the latest delivery).
+    expect(replies.some((m) => m.body.startsWith("Oi! Aqui é Téo. Sobre “"))).toBe(true);
+  });
+
+  it("has the team lead answer when nobody is mentioned", async () => {
+    const { replyAgentNames } = await postUserMessage(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      userId,
+      body: "O que já está pronto até agora?",
+    });
+    expect(replyAgentNames).toEqual(["Téo"]);
   });
 });
 
@@ -415,12 +508,16 @@ describe.skipIf(!url)("runner in an English workspace (Postgres + demo model)", 
       .from(schema.deliveryVersion)
       .where(eq(schema.deliveryVersion.deliveryId, deliveryId))
       .orderBy(asc(schema.deliveryVersion.number));
-    expect(versions.map((v) => v.label)).toEqual(["draft · Téo", "review · Bia"]);
-    expect(versions[1]?.content).toContain("# Balcony gardens: the complete, no-fluff guide");
+    expect(versions.map((v) => v.label)).toEqual(["draft · Téo", "revision · Téo", "review · Bia"]);
+    expect(versions[2]?.content).toContain("# Balcony gardens: the complete, no-fluff guide");
+    expect(lines).toContain("Back to you, Téo: I left 1 note.");
+    expect(lines).toContain("Got the notes. Reworking the text.");
+    // Téo asks a teammate mid-draft, and the answer shows up in the room.
+    expect(lines.some((l) => l.startsWith("Lia, quick question:"))).toBe(true);
     const notes = await db
       .select()
       .from(schema.reviewNote)
-      .where(eq(schema.reviewNote.versionId, versions[1]?.id as string));
+      .where(eq(schema.reviewNote.versionId, versions[2]?.id as string));
     expect(notes.map((n) => n.body)).toContain("Made the sentence more concrete.");
 
     const [approval] = await db
@@ -428,6 +525,151 @@ describe.skipIf(!url)("runner in an English workspace (Postgres + demo model)", 
       .from(schema.approval)
       .where(eq(schema.approval.deliveryId, deliveryId));
     expect(approval?.question).toBe("The work is ready. Can I wrap it up?");
+  });
+
+  it("lets the lead plan a request with no delivery type", async () => {
+    const { requestId, deliveryId } = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      userId,
+      prompt: "Write a launch email for our new balcony garden kit",
+    });
+    expect((await runRequest(deps, { requestId })).outcome).toBe("awaiting_approval");
+    const [req] = await db.select().from(schema.request).where(eq(schema.request.id, requestId));
+    expect(req?.playbookId).toBeNull();
+    expect(req?.flow?.steps.map((s) => `${s.agentKey}:${s.kind}`)).toEqual([
+      "lia:research",
+      "teo:draft",
+      "bia:review",
+    ]);
+    const [del] = await db.select().from(schema.delivery).where(eq(schema.delivery.id, deliveryId));
+    expect(del?.kind).toBe(req?.flow?.title);
+    const lines = await roomLines(requestId);
+    expect(lines[0]).toBe(
+      "New request (Open request): Write a launch email for our new balcony garden kit",
+    );
+    expect(lines).toContain("Reading the request to decide how we'll work on it.");
+    expect(
+      lines.some((l) =>
+        l.endsWith("Lia researches → Téo writes → Bia reviews (up to 2 rounds) → you approve."),
+      ),
+    ).toBe(true);
+
+    // A revision follows the same flow, without planning again.
+    const change = await requestChanges(db, {
+      workspaceId,
+      deliveryId,
+      userId,
+      feedback: "Shorter, please",
+    });
+    expect((await runRequest(deps, change)).outcome).toBe("awaiting_approval");
+    const planning = (await roomLines(requestId)).filter((l) =>
+      l.startsWith("Reading the request"),
+    );
+    expect(planning).toHaveLength(1);
+  });
+
+  it("talks it over, stops at a checkpoint and goes on when you confirm", async () => {
+    const { requestId, deliveryId } = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      playbookId: await playbookId("seo", "estudo-caso"),
+      userId,
+      prompt: "A case study about a bakery that doubled online orders",
+    });
+    expect((await runRequest(deps, { requestId })).outcome).toBe("waiting");
+    const [checkpoint] = await db
+      .select()
+      .from(schema.approval)
+      .where(
+        and(eq(schema.approval.deliveryId, deliveryId), eq(schema.approval.kind, "checkpoint")),
+      );
+    expect(checkpoint?.status).toBe("pending");
+    let lines = await roomLines(requestId);
+    expect(lines.some((l) => l.startsWith("Before we go on, let's talk it over"))).toBe(true);
+    expect(lines).toContain("Settled. We'll go with what we agreed.");
+    expect(lines.some((l) => l.startsWith("Before we go on, I need you to confirm"))).toBe(true);
+    // Nothing is written before the person confirms.
+    expect(
+      await db
+        .select()
+        .from(schema.deliveryVersion)
+        .where(eq(schema.deliveryVersion.deliveryId, deliveryId)),
+    ).toHaveLength(0);
+
+    const resume = await decideApproval(db, {
+      workspaceId,
+      approvalId: checkpoint?.id as string,
+      userId,
+      allow: true,
+    });
+    expect((await runRequest(deps, resume)).outcome).toBe("awaiting_approval");
+    lines = await roomLines(requestId);
+    expect(lines).toContain("You confirmed. Moving on.");
+    expect(lines.at(-1)).toContain("is ready for you to review");
+  });
+
+  it("closes the request when you stop it at a checkpoint", async () => {
+    const { requestId, deliveryId } = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      playbookId: await playbookId("seo", "estudo-caso"),
+      userId,
+      prompt: "A case study about a gym that cut churn",
+    });
+    expect((await runRequest(deps, { requestId })).outcome).toBe("waiting");
+    const [checkpoint] = await db
+      .select()
+      .from(schema.approval)
+      .where(
+        and(eq(schema.approval.deliveryId, deliveryId), eq(schema.approval.kind, "checkpoint")),
+      );
+    const resume = await decideApproval(db, {
+      workspaceId,
+      approvalId: checkpoint?.id as string,
+      userId,
+      allow: false,
+    });
+    expect((await runRequest(deps, resume)).outcome).toBe("cancelled");
+    const [req] = await db.select().from(schema.request).where(eq(schema.request.id, requestId));
+    expect(req?.status).toBe("cancelled");
+    expect(await roomLines(requestId)).toContain("You asked to stop here. The request is closed.");
+  });
+
+  it("keeps teams on their own work and points to the right one", async () => {
+    const offTopic = await checkScope(db, {
+      workspaceId,
+      teamId: teams.code as string,
+      prompt: "Write a blog post about balcony gardens",
+    });
+    expect(offTopic.fit).toBe("out");
+    expect(offTopic.alternatives[0]?.teamId).toBe(teams.seo);
+    const onTopic = await checkScope(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      prompt: "Write a blog post about balcony gardens",
+    });
+    expect(onTopic.fit).toBe("in");
+    const fix = await checkScope(db, {
+      workspaceId,
+      teamId: teams.code as string,
+      prompt: "Investigate the bug in the checkout tests",
+    });
+    expect(fix.fit).toBe("in");
+    // "checkout" must not match "fact-checking" in the content team's skills.
+    const code = await checkScope(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      prompt: "Fix the bug in our checkout code",
+    });
+    expect(code.fit).toBe("out");
+    expect(code.alternatives[0]?.teamId).toBe(teams.code);
+    const newsletter = await checkScope(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      prompt: "A newsletter about our checkout redesign",
+    });
+    expect(newsletter.fit).toBe("in");
   });
 
   it("coordinates in English, with the plan's protocol keys unchanged", async () => {
@@ -455,6 +697,198 @@ describe.skipIf(!url)("runner in an English workspace (Postgres + demo model)", 
     expect(lines.at(-1)).toBe(
       "I need your permission to use “Comment on GitHub”. You'll find it in Waiting on you.",
     );
+  });
+
+  it("never runs the same request twice at once", async () => {
+    const slow = {
+      db,
+      loadModels: (ws: string) => loadModelContext(db, ws, { masterKey: null, demoDelayMs: 100 }),
+    };
+    const { requestId } = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      playbookId: await playbookId("seo", "newsletter"),
+      userId,
+      prompt: "A newsletter about rooftop beehives",
+    });
+    // The same job delivered twice, picked up by two workers at the same moment.
+    const outcomes = await Promise.all([
+      runRequest(slow, { requestId }),
+      runRequest(slow, { requestId }),
+    ]);
+    expect(outcomes.map((o) => o.outcome).sort()).toEqual(["awaiting_approval", "skipped"]);
+    const runs = await db.select().from(schema.run).where(eq(schema.run.requestId, requestId));
+    expect(runs).toHaveLength(1);
+    const versions = await db
+      .select()
+      .from(schema.deliveryVersion)
+      .innerJoin(schema.delivery, eq(schema.delivery.id, schema.deliveryVersion.deliveryId))
+      .where(eq(schema.delivery.requestId, requestId));
+    // Draft, rewrite after review notes, review: once each, not twice.
+    expect(versions).toHaveLength(2);
+  });
+
+  it("resumes from the right step after the worker is killed mid-run", async () => {
+    const { requestId } = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      playbookId: await playbookId("seo", "artigo-blog"),
+      userId,
+      prompt: "A blog post about worm composting",
+    });
+    const stepsOf = () =>
+      db
+        .select({ id: schema.step.id, position: schema.step.position, status: schema.step.status })
+        .from(schema.step)
+        .innerJoin(schema.run, eq(schema.run.id, schema.step.runId))
+        .where(eq(schema.run.requestId, requestId))
+        .orderBy(asc(schema.step.position));
+
+    // A real worker process, killed once research is done and the draft has begun.
+    const fixture = fileURLToPath(new URL("./fixtures/run-request.ts", import.meta.url));
+    const child = spawn(process.execPath, [fixture, requestId], {
+      env: { ...process.env, DATABASE_URL: url },
+      stdio: "ignore",
+    });
+    const deadline = Date.now() + 30_000;
+    for (;;) {
+      const steps = await stepsOf();
+      if (steps[0]?.status === "done" && steps.length >= 2) break;
+      if (Date.now() > deadline) throw new Error("the worker never got past research");
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    child.kill("SIGKILL");
+    await new Promise((r) => child.once("exit", r));
+
+    const [crashed] = await db.select().from(schema.run).where(eq(schema.run.requestId, requestId));
+    expect(crashed?.status).toBe("running");
+    const research = (await stepsOf())[0];
+    const callsFor = async (stepId: string) =>
+      (await db.select().from(schema.llmCall).where(eq(schema.llmCall.stepId, stepId))).length;
+    const researchCalls = await callsFor(research?.id as string);
+    expect(researchCalls).toBeGreaterThan(0);
+
+    // While the dead worker's lease lasts, a retry steps aside…
+    expect((await runRequest(deps, { requestId })).outcome).toBe("skipped");
+    // …and once it runs out (as when pg-boss retries the job), the run picks up where it was.
+    await db
+      .update(schema.run)
+      .set({ leaseUntil: new Date(Date.now() - 1000) })
+      .where(eq(schema.run.id, crashed?.id as string));
+    expect((await runRequest(deps, { requestId })).outcome).toBe("awaiting_approval");
+
+    expect(await callsFor(research?.id as string)).toBe(researchCalls);
+    const runs = await db.select().from(schema.run).where(eq(schema.run.requestId, requestId));
+    expect(runs).toHaveLength(1);
+    expect((await stepsOf()).every((st) => st.status === "done")).toBe(true);
+  }, 60_000);
+
+  it("cancels a delivery: a running worker stops at its next step", async () => {
+    const { requestId, deliveryId } = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      playbookId: await playbookId("seo", "newsletter"),
+      userId,
+      prompt: "A newsletter about winter cycling",
+    });
+    const slow = {
+      db,
+      loadModels: (ws: string) => loadModelContext(db, ws, { masterKey: null, demoDelayMs: 300 }),
+    };
+    const running = runRequest(slow, { requestId });
+    // Cancel once the run has started.
+    for (let i = 0; i < 100; i++) {
+      const [r] = await db.select().from(schema.run).where(eq(schema.run.requestId, requestId));
+      if (r) break;
+      await new Promise((done) => setTimeout(done, 20));
+    }
+    await cancelDelivery(db, { workspaceId, deliveryId, userId });
+    expect((await running).outcome).toBe("cancelled");
+
+    const [del] = await db.select().from(schema.delivery).where(eq(schema.delivery.id, deliveryId));
+    expect(del?.status).toBe("cancelled");
+    expect(await roomLines(requestId)).toContain(
+      "You cancelled “A newsletter about winter cycling”. The team stopped that work.",
+    );
+    await expect(cancelDelivery(db, { workspaceId, deliveryId, userId })).rejects.toThrow(
+      "delivery_closed",
+    );
+  });
+
+  it("deletes a delivery with everything behind it", async () => {
+    const { requestId, deliveryId } = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      playbookId: await playbookId("seo", "newsletter"),
+      userId,
+      prompt: "A newsletter about bike lights",
+    });
+    await runRequest(deps, { requestId });
+    await deleteDelivery(db, { workspaceId, deliveryId, userId });
+    expect(
+      await db.select().from(schema.request).where(eq(schema.request.id, requestId)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.deliveryVersion)
+        .where(eq(schema.deliveryVersion.deliveryId, deliveryId)),
+    ).toHaveLength(0);
+    expect(await roomLines(requestId)).toHaveLength(0);
+  });
+
+  it("removes a team, and a team waiting on its help carries on", async () => {
+    const research = (
+      await hireTeam(db, { workspaceId, template: getTeamTemplate("market-research") })
+    ).teamId;
+    const helper = await createRequest(db, {
+      workspaceId,
+      teamId: research,
+      userId,
+      prompt: "Current prices of e-bike batteries",
+    });
+    // Another team's request is waiting on this one.
+    const origin = await createRequest(db, {
+      workspaceId,
+      teamId: teams.seo as string,
+      playbookId: await playbookId("seo", "newsletter"),
+      userId,
+      prompt: "A newsletter about e-bike batteries",
+    });
+    await db.insert(schema.handoff).values({
+      workspaceId,
+      fromTeamId: teams.seo as string,
+      toTeamId: research,
+      ask: "Prices?",
+      originRequestId: origin.requestId,
+      helperRequestId: helper.requestId,
+    });
+
+    // Work the team did, with model calls tied to its agents, runs and steps.
+    await runRequest(deps, { requestId: helper.requestId });
+    const spend = async () =>
+      (
+        await db
+          .select({ micros: schema.llmCall.costMicros })
+          .from(schema.llmCall)
+          .where(eq(schema.llmCall.workspaceId, workspaceId))
+      ).length;
+    const callsBefore = await spend();
+
+    const { followUps } = await deleteTeam(db, { workspaceId, teamId: research, userId });
+    // The cost ledger keeps every call.
+    expect(await spend()).toBe(callsBefore);
+    expect(followUps).toEqual([{ requestId: origin.requestId }]);
+    expect(await db.select().from(schema.team).where(eq(schema.team.id, research))).toHaveLength(0);
+    expect(
+      await db.select().from(schema.request).where(eq(schema.request.id, helper.requestId)),
+    ).toHaveLength(0);
+    // Its department ("Research") went with it: nothing else was in it.
+    const departments = await db
+      .select({ name: schema.department.name })
+      .from(schema.department)
+      .where(eq(schema.department.workspaceId, workspaceId));
+    expect(departments.map((d) => d.name)).not.toContain("Research");
   });
 
   it("explains failures in English", async () => {

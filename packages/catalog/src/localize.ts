@@ -15,6 +15,7 @@ export function localizeTemplate(template: TeamTemplate, locale: Locale): TeamTe
     department: words.department,
     name: words.name,
     description: words.description,
+    scope: words.scope ?? template.scope,
     agents: template.agents.map((agent) => {
       const w = words.agents[agent.key];
       return w ? { ...agent, ...w } : agent;

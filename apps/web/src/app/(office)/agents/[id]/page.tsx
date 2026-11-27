@@ -1,5 +1,5 @@
-import { DEFAULT_TIER_MODELS } from "@squadai/core";
-import { getAgentProfile, getDb, getPresence, schema } from "@squadai/db";
+import { MODEL_TIERS, type ModelTier, type TierModels, tierModelsFor } from "@squadai/core";
+import { getAgentProfile, getDb, getModelOptions, getPresence, schema } from "@squadai/db";
 import { workspaceTools } from "@squadai/engine";
 import { Avatar } from "@squadai/ui";
 import { eq } from "drizzle-orm";
@@ -10,6 +10,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { StatusPill } from "@/components/status";
 import { getContentText } from "@/lib/content";
 import { formatPercent, formatUsdMicros } from "@/lib/format";
+import { modelOptions } from "@/lib/model-options";
 import { workspaceContext } from "@/lib/secrets";
 import { requireOffice } from "@/lib/session";
 import { toolLabel, toolUnavailableReason } from "@/lib/tool-labels";
@@ -34,10 +35,16 @@ export default async function AgentPage({ params }: Props) {
   ]);
   const db = getDb();
   const { id } = await params;
-  const [a, presence] = await Promise.all([
+  const [a, presence, connected, [ws]] = await Promise.all([
     getAgentProfile(db, workspace.id, id),
     getPresence(db, workspace.id),
+    getModelOptions(db, workspace.id),
+    db
+      .select({ settings: schema.workspace.settings })
+      .from(schema.workspace)
+      .where(eq(schema.workspace.id, workspace.id)),
   ]);
+  const settings = ws?.settings ?? {};
   if (!a) notFound();
   const text = await getContentText();
   Object.assign(a, {
@@ -206,7 +213,12 @@ export default async function AgentPage({ params }: Props) {
               fallbackModel: a.fallbackModel ?? "",
               instructions: a.instructions,
             }}
-            tierDefaults={DEFAULT_TIER_MODELS}
+            tierDefaults={
+              Object.fromEntries(
+                MODEL_TIERS.map((tier) => [tier, tierModelsFor(settings, tier)]),
+              ) as Record<ModelTier, TierModels>
+            }
+            options={modelOptions(connected, (await getTranslations("models"))("otherProvider"))}
           />
 
           <section

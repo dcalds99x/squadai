@@ -6,12 +6,20 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
     "start": "node src/index.ts",
+    "load-test": "node --env-file-if-exists=../../.env scripts/load-test.ts",
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.223.2",
+    "@opentelemetry/resources": "^2.12.1",
+    "@opentelemetry/sdk-trace-node": "^2.12.1",
+    "@opentelemetry/semantic-conventions": "^1.45.0",
+    "@squadai/catalog": "workspace:*",
     "@squadai/core": "workspace:*",
     "@squadai/db": "workspace:*",
-    "pg-boss": "^12.40.0",
-    "@squadai/engine": "workspace:*"
+    "@squadai/engine": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "pg-boss": "^12.40.0"
   }
 }

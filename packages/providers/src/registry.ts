@@ -3,6 +3,7 @@ import { createAiSdkModel, DEFAULT_BASE_URLS } from "./aisdk.ts";
 import { createAnthropicModel, listAnthropicModels } from "./anthropic.ts";
 import { createDemoModel } from "./demo.ts";
 import { costMicros } from "./pricing.ts";
+import { clip, inSpan, traceContent } from "./telemetry.ts";
 import {
   BudgetExceededError,
   type ChatModel,
@@ -51,18 +52,47 @@ export async function generateWithFallback(
   request: ChatRequest,
   factory: ModelFactory,
 ): Promise<ChatResult> {
-  const attempt = async (ref: ModelRef, usedFallback: boolean): Promise<ChatResult> => {
-    const model = factory(ref);
-    const started = performance.now();
-    const output = await model.generate(request);
-    return {
-      ...output,
-      provider: model.provider,
-      model: model.model,
-      costMicros: costMicros(model.provider, model.model, output),
-      latencyMs: Math.round(performance.now() - started),
-      usedFallback,
-    };
+  const attempt = (ref: ModelRef, usedFallback: boolean): Promise<ChatResult> => {
+    const { provider, model: name } = parseModelRef(ref);
+    // One span per call, GenAI conventions: "chat <model>".
+    return inSpan(
+      `chat ${name}`,
+      {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.system": provider,
+        "gen_ai.request.model": name,
+        "squadai.call_kind": request.hint?.kind ?? "chat",
+        "squadai.agent": request.hint?.agentName ?? "",
+        "squadai.used_fallback": usedFallback,
+      },
+      async (span) => {
+        const model = factory(ref);
+        const started = performance.now();
+        const output = await model.generate(request);
+        const result: ChatResult = {
+          ...output,
+          provider: model.provider,
+          model: model.model,
+          costMicros: costMicros(model.provider, model.model, output),
+          latencyMs: Math.round(performance.now() - started),
+          usedFallback,
+        };
+        span.setAttributes({
+          "gen_ai.response.model": result.model,
+          "gen_ai.usage.input_tokens": result.inputTokens,
+          "gen_ai.usage.output_tokens": result.outputTokens,
+          "squadai.cost_usd": result.costMicros / 1_000_000,
+          "squadai.latency_ms": result.latencyMs,
+        });
+        if (traceContent()) {
+          span.setAttributes({
+            "gen_ai.prompt": clip(`${request.system}\n\n${request.prompt}`),
+            "gen_ai.completion": clip(result.text),
+          });
+        }
+        return result;
+      },
+    );
   };
 
   try {
@@ -117,6 +147,15 @@ const ERRORS: Record<Locale, typeof PT_BR> = {
   },
 };
 
+/** Model ids that can't chat: embeddings, speech, images, moderation and the like. */
+const NOT_CHAT =
+  /embed|whisper|tts|dall-e|davinci|babbage|moderation|transcribe|realtime|audio|image|imagen|veo|aqa|search-api/i;
+
+/** The chat models a provider lists, deduplicated and sorted, so pickers stay short. */
+export function chatModels(ids: string[]): string[] {
+  return [...new Set(ids.filter((id) => id && !NOT_CHAT.test(id)))].sort().slice(0, 200);
+}
+
 /** Validates credentials by listing models. Costs nothing and spends no tokens. */
 export async function checkConnection(
   credentials: ProviderCredentials,
@@ -141,7 +180,7 @@ export async function checkConnection(
       const body = (await res.json()) as { models?: { name: string }[] };
       return {
         ok: true,
-        models: (body.models ?? []).map((m) => m.name.replace(/^models\//, "")).slice(0, 50),
+        models: chatModels((body.models ?? []).map((m) => m.name.replace(/^models\//, ""))),
       };
     }
     const baseUrl = credentials.baseUrl ?? DEFAULT_BASE_URLS[credentials.provider];
@@ -152,7 +191,7 @@ export async function checkConnection(
     });
     if (!res.ok) return { ok: false, models: [], error: words.providerStatus(res.status) };
     const body = (await res.json()) as { data?: { id: string }[] };
-    return { ok: true, models: (body.data ?? []).map((m) => m.id).slice(0, 50) };
+    return { ok: true, models: chatModels((body.data ?? []).map((m) => m.id)) };
   } catch (error) {
     return { ok: false, models: [], error: friendlyError(error, locale) };
   }

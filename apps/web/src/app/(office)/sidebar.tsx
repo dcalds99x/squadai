@@ -36,7 +36,7 @@ export function Sidebar({ departments, waiting, user, workspaceName }: SidebarPr
     }`;
 
   return (
-    <aside className="flex max-w-full flex-[1_1_240px] flex-col gap-6 border-line border-r bg-surface px-3.5 py-5 md:max-w-[264px]">
+    <aside className="flex max-w-full flex-[1_1_240px] flex-col gap-6 border-line border-r bg-surface px-3.5 py-5 md:max-w-[264px] lg:h-screen lg:w-[264px] lg:flex-none lg:overflow-y-auto">
       <Link href="/" className="px-2.5">
         <Logo />
       </Link>

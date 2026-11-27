@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type ChatModel,
   type ChatRequest,
+  chatModels,
   costMicros,
   createDemoModel,
   createModelFactory,
@@ -181,5 +182,22 @@ describe("tool protocol", () => {
 
   it("does not match mismatched tags", () => {
     expect(parseToolCall('<tool name="web_search">{}</ferramenta>')).toBeNull();
+  });
+});
+
+describe("chatModels", () => {
+  it("keeps chat models, drops the rest, sorted and without repeats", () => {
+    expect(
+      chatModels([
+        "gpt-5.5",
+        "text-embedding-3-large",
+        "whisper-1",
+        "gpt-4o-mini-tts",
+        "dall-e-3",
+        "gpt-5.5",
+        "gpt-5.5-mini",
+        "omni-moderation-latest",
+      ]),
+    ).toEqual(["gpt-5.5", "gpt-5.5-mini"]);
   });
 });

@@ -70,6 +70,8 @@ export async function hireTeam(
         name: template.name,
         description: template.description,
         color: template.color,
+        leadKey: template.lead ?? null,
+        scope: template.scope,
         templateRef: `${template.id}@${template.version}`,
       })
       .returning({ id: team.id });
@@ -115,7 +117,13 @@ export async function hireTeam(
         name: p.name,
         description: p.description,
         mode: p.mode,
-        steps: p.steps.map((s) => ({ agentKey: s.agent, task: s.task })),
+        steps: p.steps.map((s) => ({
+          agentKey: s.agent,
+          task: s.task,
+          ...(s.kind ? { kind: s.kind } : {}),
+          ...(s.with ? { with: s.with } : {}),
+          ...(s.rounds ? { rounds: s.rounds } : {}),
+        })),
         estimatedHumanMinutes: p.estimatedHumanMinutes,
         requiresApproval: p.approval,
       })),

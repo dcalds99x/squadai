@@ -16,7 +16,9 @@ Hire a ready-made team, ask for something in plain language, watch the agents wo
 ![i18n](https://img.shields.io/badge/i18n-en%20%7C%20pt--BR-0E8A6A?style=flat)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-[Features](#features) · [Architecture](#architecture) · [Engineering decisions](#engineering-decisions) · [Quick start](#quick-start) · [Docs](#documentation)
+[Features](#features) · [Architecture](#architecture) · [Engineering decisions](#engineering-decisions) · [Quick start](#quick-start) · [Case study](examples/pedal-co/README.md) · [Docs](#documentation)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dcalds99x/squadai)
 
 <img src="docs/images/home.png" alt="The office hub: weekly pulse, what needs your attention, your teams and recent activity" width="100%" />
 
@@ -91,10 +93,12 @@ flowchart LR
   end
 
   subgraph worker["apps/worker"]
-    ENG["Engine<br/>modes · tools · checkpoints"]
+    ENG["Engine<br/>flows · scope · leases · checkpoints"]
     PROV["Providers<br/>Anthropic SDK · AI SDK · demo"]
-    TOOLS["Tools<br/>web search · GitHub · MCP · handoffs"]
+    TOOLS["Tools<br/>web search · GitHub · MCP · teammates · handoffs"]
   end
+
+  OTEL[["OTLP<br/>Jaeger · Langfuse"]]
 
   UI -- "forms" --> SA
   SA -- "write + enqueue" --> DATA & Q
@@ -104,6 +108,27 @@ flowchart LR
   ENG -- "notify" --> N
   N -- "listen" --> SSE
   SSE -- "something changed" --> UI
+  ENG -. "traces" .-> OTEL
+```
+
+### How a team works a request
+
+A team doesn't run one fixed pipeline. Each delivery type is a small flow, and for a request in plain words the team lead writes the flow on the spot:
+
+```mermaid
+flowchart LR
+  R(["Your request"]) --> S{"In the team's scope?"}
+  S -- "no" --> X["Refused, with the team that fits"]
+  S -- "yes" --> L["Lead plans the steps<br/>(or a playbook gives them)"]
+  L --> RS["Research"]
+  RS --> D["Talk it over"]
+  D --> C{{"Checkpoint:<br/>you confirm"}}
+  C --> W["Draft"]
+  W --> V["Review"]
+  V -- "revise (up to N rounds)" --> W
+  V -- "approve" --> A{{"You approve"}}
+  W -. "ask a teammate" .- T["Teammate"]
+  RS -. "ask another team" .- O["Other team"]
 ```
 
 - **Why a separate worker?** A run takes minutes, can wait hours for a person and must survive restarts. None of that belongs in an HTTP request.
@@ -207,14 +232,18 @@ A few things worth pointing out:
 
 ## Quality
 
-| Check                                                                                                                                    | Where                                                       |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Biome lint + format                                                                                                                      | `pnpm lint`                                                 |
-| Strict TypeScript across 8 packages                                                                                                      | `pnpm typecheck`                                            |
-| Unit tests: metrics, crypto, avatars, protocol parsing, routing, catalogs, i18n parity                                                   | `pnpm test`                                                 |
-| Integration tests on a real Postgres with the demo model: every orchestration mode, tool pauses, handoffs, budgets, resume after failure | `pnpm test` with `DATABASE_URL`                             |
-| Team templates and migrations up to date                                                                                                 | `pnpm catalog:check`, `drizzle-kit check`                   |
-| Production build and Docker images                                                                                                       | CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) |
+| Check                                                                                                                                    | Where                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Biome lint + format                                                                                                                      | `pnpm lint`                                                   |
+| Strict TypeScript across every package                                                                                                   | `pnpm typecheck`                                              |
+| Unit tests: metrics, crypto, avatars, protocol parsing, routing, catalogs, i18n parity                                                   | `pnpm test`                                                   |
+| Integration tests on a real Postgres with the demo model: every orchestration mode, tool pauses, handoffs, budgets, resume after failure | `pnpm test` with `DATABASE_URL`                               |
+| Team templates and migrations up to date                                                                                                 | `pnpm catalog:check`, `drizzle-kit check`                     |
+| Production build and Docker images                                                                                                       | CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))   |
+| No double runs under load; resume after the worker is killed mid-run                                                                     | `pnpm test`, `load-test` ([reliability](docs/reliability.md)) |
+| Team evals: reference requests per team, rule checks in CI, AI judge on `main`                                                           | `pnpm evals`                                                  |
+| End-to-end browser tests: sign-up → request → approval → checkpoint → permission                                                         | `pnpm e2e`                                                    |
+| OpenTelemetry traces for every run, step, tool and model call                                                                            | Jaeger (`--profile tracing`) or Langfuse                      |
 
 ## Tech stack
 
@@ -268,32 +297,40 @@ The interface speaks **English** and **Brazilian Portuguese**. Each person picks
 ```
 apps/
   web/         Next.js app: UI, auth, server actions, SSE, health check
-  worker/      pg-boss worker: runs requests, room replies, schedules
+  worker/      pg-boss worker: runs requests, room replies, schedules; load test
 packages/
   core/        Domain vocabulary, metrics, avatars, locales, secret encryption
-  engine/      Orchestration: modes, tool loop, pauses, handoffs, router, budget
+  engine/      Orchestration: flows, scope, leases, tool loop, pauses, handoffs, tracing
+  evals/       Reference requests per team, rule checks and an AI judge
   providers/   Model adapters, pricing, tool protocol, demo model
   catalog/     Team templates (YAML), schema, translations
   db/          Drizzle schema, migrations, read models
   ui/          Aurora design system components
-docs/          Architecture, ADRs, team guide, screenshots
+e2e/           Playwright end-to-end tests
+examples/      Pedal & Co. case study: custom team and an orders MCP server
+docs/          PRD, architecture, reliability, ADRs, team guide, screenshots
 scripts/       Screenshot automation
 ```
 
 ## Roadmap
 
-| Phase           | Scope                                                                            | Status  |
-| --------------- | -------------------------------------------------------------------------------- | ------- |
-| 0. Foundation   | Monorepo, CI, Docker, schema, auth, design system                                | ✅      |
-| 1. Core loop    | Providers, requests, live room, versioned deliveries, approvals                  | ✅      |
-| 2. Real teams   | Coordinator/parallel modes, handoffs, router, budgets, fallback models           | ✅      |
-| 3. Integrations | Tools, MCP, GitHub, Notion, enforced permissions, audit log                      | ✅      |
-| 4. Reliability  | Evals in CI, OpenTelemetry traces, crash-resume test, load tests, Playwright E2E | next    |
-| 5. Showcase     | Public demo, deployment case study, video                                        | planned |
+| Phase           | Scope                                                                                 | Status |
+| --------------- | ------------------------------------------------------------------------------------- | ------ |
+| 0. Foundation   | Monorepo, CI, Docker, schema, auth, design system                                     | ✅     |
+| 1. Core loop    | Providers, requests, live room, versioned deliveries, approvals                       | ✅     |
+| 2. Real teams   | Coordinator/parallel modes, handoffs, router, budgets, fallback models                | ✅     |
+| 3. Integrations | Tools, MCP, GitHub, Notion, enforced permissions, audit log                           | ✅     |
+| 3.5 Feedback    | Model picker, free-form requests, team scope, fluid flows (loops, talks, checkpoints) | ✅     |
+| 4. Reliability  | Evals in CI, OpenTelemetry traces, crash-resume test, load tests, Playwright E2E      | ✅     |
+| 5. Showcase     | Public demo, deployment case study, video                                             | next   |
 
 ## Documentation
 
+- [Product requirements](docs/prd.md): goals, requirements and a log of every scope change
 - [Architecture](docs/architecture.md): how the pieces fit, metric definitions, security
+- [Reliability](docs/reliability.md): no double runs, crash recovery, tracing, evals, E2E and load tests
+- [Case study: Pedal & Co.](examples/pedal-co/README.md): a fictional client deployment, with a custom team and an MCP connector
+- **Public demo:** [`render.yaml`](render.yaml) deploys web, worker and Postgres with `SQUADAI_PUBLIC_DEMO=1` (demo model, sample work, no keys or integrations)
 - [Architecture decision records](docs/adr)
 - [Creating a team](docs/teams.md)
 - [Contributing](CONTRIBUTING.md), including how to add a language

@@ -1,0 +1,25 @@
+{
+  "name": "@squadai/evals",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference requests for every team, checked by rules and, with a real model, by an AI judge.",
+  "scripts": {
+    "evals": "node --env-file-if-exists=../../.env src/run.ts",
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@squadai/catalog": "workspace:*",
+    "@squadai/core": "workspace:*",
+    "@squadai/db": "workspace:*",
+    "@squadai/engine": "workspace:*",
+    "@squadai/providers": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.2"
+  }
+}

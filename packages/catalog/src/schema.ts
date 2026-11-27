@@ -1,7 +1,9 @@
 import {
   AGENT_STYLES,
   DEFAULT_LOCALE,
+  FLOW_STEP_KINDS,
   LOCALES,
+  MAX_REVIEW_ROUNDS,
   MODEL_TIERS,
   PLAYBOOK_MODES,
   TOOL_POLICIES,
@@ -33,6 +35,18 @@ export const AgentTemplateSchema = z.object({
 export const PlaybookStepSchema = z.object({
   agent: slug,
   task: z.string().min(1),
+  /** What the step does. Left out, the position decides (see FLOW_STEP_KINDS). */
+  kind: z.enum(FLOW_STEP_KINDS).optional(),
+  /** discuss: the teammates who join the conversation. */
+  with: z.array(slug).optional(),
+  /** review: how many rounds the reviewer may run, sending the draft back in between. */
+  rounds: z.number().int().min(1).max(MAX_REVIEW_ROUNDS).optional(),
+});
+
+/** What a team does and doesn't do. Requests outside it are sent elsewhere. */
+export const ScopeSchema = z.object({
+  does: z.array(z.string().min(1)).default([]),
+  doesNot: z.array(z.string().min(1)).default([]),
 });
 
 /**
@@ -74,6 +88,11 @@ export const PlaybookTranslationSchema = z.object({
   tasks: z.array(z.string().min(1)).min(1),
 });
 
+export const ScopeTranslationSchema = z.object({
+  does: z.array(z.string().min(1)),
+  doesNot: z.array(z.string().min(1)),
+});
+
 export const TeamTranslationSchema = z.object({
   department: z.string().min(1),
   name: z.string().min(1),
@@ -82,6 +101,7 @@ export const TeamTranslationSchema = z.object({
   agents: z.record(slug, AgentTranslationSchema),
   /** Playbook key → its words. */
   playbooks: z.record(slug, PlaybookTranslationSchema),
+  scope: ScopeTranslationSchema.optional(),
 });
 
 export const TeamTemplateSchema = z
@@ -94,6 +114,9 @@ export const TeamTemplateSchema = z
     name: z.string().min(1),
     description: z.string().min(1),
     color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+    /** The agent who plans free-form requests. Defaults to the first agent. */
+    lead: slug.optional(),
+    scope: ScopeSchema.default({ does: [], doesNot: [] }),
     agents: z.array(AgentTemplateSchema).min(1),
     playbooks: z.array(PlaybookSchema).min(1),
     /** Optional versions in other languages, picked by the workspace locale on hire. */
@@ -112,6 +135,9 @@ export const TeamTemplateSchema = z
         message: "playbook keys must be unique",
       });
     }
+    if (team.lead && !keys.includes(team.lead)) {
+      ctx.addIssue({ code: "custom", path: ["lead"], message: `unknown agent "${team.lead}"` });
+    }
     team.playbooks.forEach((playbook, p) => {
       playbook.steps.forEach((step, s) => {
         if (!keys.includes(step.agent)) {
@@ -119,6 +145,29 @@ export const TeamTemplateSchema = z
             code: "custom",
             path: ["playbooks", p, "steps", s, "agent"],
             message: `unknown agent "${step.agent}"`,
+          });
+        }
+        for (const other of step.with ?? []) {
+          if (!keys.includes(other) || other === step.agent) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["playbooks", p, "steps", s, "with"],
+              message: `"${other}" can't join this discussion`,
+            });
+          }
+        }
+        if (step.kind === "discuss" && (step.with ?? []).length === 0) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["playbooks", p, "steps", s, "with"],
+            message: "a discussion needs at least one teammate in `with`",
+          });
+        }
+        if (step.kind && playbook.mode !== "sequential") {
+          ctx.addIssue({
+            code: "custom",
+            path: ["playbooks", p, "steps", s, "kind"],
+            message: `step kinds only apply to sequential playbooks`,
           });
         }
       });
@@ -175,3 +224,5 @@ export type AgentTemplate = z.infer<typeof AgentTemplateSchema>;
 export type Playbook = z.infer<typeof PlaybookSchema>;
 export type TeamTemplate = z.infer<typeof TeamTemplateSchema>;
 export type TeamTranslation = z.infer<typeof TeamTranslationSchema>;
+export type PlaybookStep = z.infer<typeof PlaybookStepSchema>;
+export type TeamScope = z.infer<typeof ScopeSchema>;

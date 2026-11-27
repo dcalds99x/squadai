@@ -10,7 +10,8 @@ import { ToolDecision } from "./tool-decision";
 export interface PendingItem {
   id: string;
   createdAt: Date;
-  approvalKind: "delivery" | "tool";
+  approvalKind: "delivery" | "tool" | "checkpoint";
+  question: string;
   payload: { tool?: string; input?: Record<string, unknown> } | null;
   deliveryId: string;
   title: string;
@@ -52,7 +53,22 @@ export async function PendingList({ items, now }: { items: PendingItem[]; now: D
           className="flex flex-wrap items-center gap-3.5 rounded-2xl border border-line bg-surface px-4 py-3.5"
         >
           {p.avatar && <Avatar spec={p.avatar} name={p.agentName ?? ""} size={40} decorative />}
-          {p.approvalKind === "tool" ? (
+          {p.approvalKind === "checkpoint" ? (
+            <>
+              <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-1">
+                <span className="text-[15px]">
+                  {t.rich("checkpoint", { agent: p.agentName ?? t("agentFallback"), strong })}
+                </span>
+                <span className="rounded-lg bg-canvas px-2.5 py-1.5 text-[13px] text-ink-2">
+                  {p.question}
+                </span>
+                <span className="text-xs text-subtle">
+                  {t("toolContext", { team: p.teamName, title: p.title, age: age(p.createdAt) })}
+                </span>
+              </div>
+              <ToolDecision approvalId={p.id} checkpoint />
+            </>
+          ) : p.approvalKind === "tool" ? (
             <>
               <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-1">
                 <span className="text-[15px]">

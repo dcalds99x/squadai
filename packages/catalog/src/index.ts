@@ -14,3 +14,8 @@ export function getTeamTemplate(id: string): TeamTemplate {
   if (!template) throw new Error(`Unknown team template "${id}".`);
   return template;
 }
+
+/** Every team in the catalog, in display order. */
+export function listTeamTemplates(): TeamTemplate[] {
+  return [...TEAM_TEMPLATES];
+}

@@ -50,6 +50,22 @@ Each step is written to the `step` table before and after it runs, with a checkp
 - **Room replies:** mentioning `@agent` in the room queues a `room-reply` job, and the agent answers in character.
 - **Fallback model:** every call goes through `generateWithFallback`. It tries the agent's primary model, then its Plan B, and records which one answered.
 
+### Flows (added 2026-11-27)
+
+A sequential playbook is a **flow**: each step has a `kind` (`research`, `draft`, `review`, `discuss` or `checkpoint`). Steps without a kind follow the position rule above, so older playbooks run exactly as before. The interpreter lives in `runRequest`; the pure helpers in `packages/engine/src/flow.ts`.
+
+- **review** with `rounds` > 1: the reviewer starts with `VERDICT: approve` or `VERDICT: revise` (a protocol token). On `revise`, its notes go back to the last writer, who rewrites, and the reviewer looks again, up to `rounds` times. The last round always approves with a revised text and notes.
+- **discuss**: the step's agent and its `with` teammates each post a short view in the room, seeing what was said before. The agent then sums up, and the summary feeds the next steps as "what the team agreed".
+- **checkpoint**: no model call. The engine creates an `approval` (`kind = "checkpoint"`) and the run waits. "Go on" resumes it; "Stop here" ends the request as `cancelled`.
+- **Free-form requests** (no playbook): the team lead (`team.lead_key`, else the first agent) writes the flow as JSON (`{"fit","title","steps":[{"agent","kind","task","with","rounds"}]}`). `parseFlowPlan` drops unknown agents and invalid steps, and adds a draft by the lead if nothing writes. The plan is stored in `request.flow`, so a revision follows the same flow without planning again, and the delivery is named after its `title`. If the lead answers `{"fit":"out"}`, the run ends as `declined` and the room says which team fits better.
+- **ask_teammate**: inside any step an agent can ask a teammate a quick question. The teammate answers on the spot with its own model, and both lines show in the room.
+
+Every step gets its position from a counter in execution order, and every decision (verdicts, plans, approvals) is stored in a step's output. So a run that resumes after a pause or a crash replays to exactly the same position.
+
+### Scope
+
+Each team has a `scope` (`does` and `doesNot` lists, from its template). `checkScope` runs before a request is created: a keyword score with strict 6-letter stems, then, when a real model is connected, a cheap model with the last word. A request outside the scope is not created; the form offers to send it to the team (and agent) that fits better. Every agent prompt, including room replies, also carries the scope and the other teams' names.
+
 **Coordinator mode:** the lead agent writes a plan as JSON (`{"tasks":[{"agent","task"}]}`). Each teammate gets its own step, all of them running at the same time. Then the lead combines their work into a version. If the plan cannot be parsed, the playbook's own steps are used instead. **Parallel mode:** every step but the last runs at the same time, and the last one combines the results. When a person asks for changes in either mode, only the combining step runs again, using the earlier contributions.
 
 Before every model call, the engine:
@@ -58,7 +74,7 @@ Before every model call, the engine:
 2. calls the model, and on a provider error retries with the fallback model;
 3. writes an `llm_call` row with tokens, cost and latency.
 
-Before every model call the engine also checks the monthly budget (`checkBudget`). When it is used up, the run stops with a message that says how to fix it. OpenTelemetry spans arrive in Phase 4.
+Before every model call the engine also checks the monthly budget (`checkBudget`). When it is used up, the run stops with a message that says how to fix it. Every run, step, tool and model call is an OpenTelemetry span; see [reliability.md](reliability.md#tracing).
 
 ## Live updates
 
@@ -85,6 +101,7 @@ Agents call tools through a text protocol that works with every provider ([ADR-0
 | `github_read`         | Reads a pull request: description and diff                                              | allow          |
 | `github_comment`      | Comments on a pull request. Needs the GitHub integration.                               | ask            |
 | `request_help`        | Asks another team for help and waits for the answer                                     | allow          |
+| `ask_teammate`        | Asks someone on the same team a quick question and gets the answer right away           | allow          |
 | `mcp.<server>.<tool>` | Every tool of a connected MCP server                                                    | deny           |
 
 Each agent has a policy for each tool:

@@ -1,7 +1,7 @@
 /**
  * The office: workspaces, departments, teams, agents and their rooms.
  */
-import type { AvatarSpec, WorkspaceSettings } from "@squadai/core";
+import type { AvatarSpec, FlowStepKind, WorkspaceSettings } from "@squadai/core";
 import {
   type AnyPgColumn,
   boolean,
@@ -80,6 +80,10 @@ export const team = pgTable(
     name: text().notNull(),
     description: text().notNull(),
     color: text().notNull(),
+    /** Key of the agent who plans free-form requests. Null means the first agent. */
+    leadKey: text(),
+    /** What the team does and doesn't do. Null means "judge by the description and playbooks". */
+    scope: jsonb().$type<TeamScope>(),
     /** Catalog template this team was hired from, e.g. "content-seo@1". */
     templateRef: text(),
     createdAt: createdAt(),
@@ -132,6 +136,17 @@ export const agentToolPolicy = pgTable(
 export interface PlaybookStepDef {
   agentKey: string;
   task: string;
+  /** See FLOW_STEP_KINDS. Left out, the position decides. */
+  kind?: FlowStepKind;
+  /** discuss: teammates who join. */
+  with?: string[];
+  /** review: rounds allowed, sending the draft back in between. */
+  rounds?: number;
+}
+
+export interface TeamScope {
+  does: string[];
+  doesNot: string[];
 }
 
 /** Something a team knows how to deliver ("Blog post"). */
