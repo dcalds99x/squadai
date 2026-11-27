@@ -6,7 +6,7 @@
 import { type Locale, workspaceLocale } from "@squadai/core";
 import type { DbOrTx } from "@squadai/db";
 import { schema } from "@squadai/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, avg, desc, eq, inArray } from "drizzle-orm";
 import { notify } from "./events.ts";
 import { latestDeliveryText, resolveHandoffsFor } from "./handoffs.ts";
 import { wordsFor } from "./words.ts";
@@ -44,6 +44,7 @@ export const WORK_ERRORS = [
   "empty_message",
   "team_not_found",
   "message_not_sent",
+  "delivery_closed",
 ] as const;
 export type WorkErrorCode = (typeof WORK_ERRORS)[number];
 
@@ -86,7 +87,8 @@ export async function createRequest(
   input: {
     workspaceId: string;
     teamId: string;
-    playbookId: string;
+    /** Empty or null: no delivery type chosen, so the team lead decides how to work. */
+    playbookId?: string | null;
     userId: string;
     prompt: string;
   },
@@ -96,18 +98,33 @@ export async function createRequest(
   const words = wordsFor(await localeOf(db, input.workspaceId));
 
   const result = await db.transaction(async (tx) => {
-    const [pb] = await tx
-      .select({ id: playbook.id, name: playbook.name, minutes: playbook.estimatedHumanMinutes })
-      .from(playbook)
-      .innerJoin(team, eq(team.id, playbook.teamId))
-      .where(
-        and(
-          eq(playbook.id, input.playbookId),
-          eq(playbook.teamId, input.teamId),
-          eq(team.workspaceId, input.workspaceId),
-        ),
-      );
-    if (!pb) throw new WorkError("unknown_playbook");
+    const [owner] = await tx
+      .select({ id: team.id })
+      .from(team)
+      .where(and(eq(team.id, input.teamId), eq(team.workspaceId, input.workspaceId)));
+    if (!owner) throw new WorkError("team_not_found");
+
+    let pb: { id: string | null; name: string; minutes: number };
+    if (input.playbookId) {
+      const [found] = await tx
+        .select({ id: playbook.id, name: playbook.name, minutes: playbook.estimatedHumanMinutes })
+        .from(playbook)
+        .where(and(eq(playbook.id, input.playbookId), eq(playbook.teamId, input.teamId)));
+      if (!found) throw new WorkError("unknown_playbook");
+      pb = found;
+    } else {
+      // The lead names the delivery once it has planned; until then it is an open request.
+      // Time saved is estimated as the team's typical playbook.
+      const [typical] = await tx
+        .select({ minutes: avg(playbook.estimatedHumanMinutes) })
+        .from(playbook)
+        .where(eq(playbook.teamId, input.teamId));
+      pb = {
+        id: null,
+        name: words.flow.customKind,
+        minutes: Math.round(Number(typical?.minutes ?? 0)) || 60,
+      };
+    }
 
     const [req] = await tx
       .insert(request)
@@ -231,7 +248,8 @@ export async function approveDelivery(
 }
 
 /**
- * A person allows or refuses a tool an agent asked to use ("Pede antes").
+ * A person allows or refuses a tool an agent asked to use ("Pede antes"), or
+ * lets the team go on past a checkpoint (or stops it there).
  * Returns the request to resume: the paused step picks up the decision.
  */
 export async function decideToolApproval(
@@ -243,6 +261,7 @@ export async function decideToolApproval(
       id: approval.id,
       status: approval.status,
       payload: approval.payload,
+      kind: approval.kind,
       requestId: run.requestId,
       teamId: delivery.teamId,
       agentName: agent.name,
@@ -256,10 +275,11 @@ export async function decideToolApproval(
       and(
         eq(approval.id, input.approvalId),
         eq(approval.workspaceId, input.workspaceId),
-        eq(approval.kind, "tool"),
+        inArray(approval.kind, ["tool", "checkpoint"]),
       ),
     );
   if (!row) throw new WorkError("approval_not_found");
+  const checkpoint = row.kind === "checkpoint";
   if (row.status !== "pending") throw new WorkError("approval_decided");
   const words = wordsFor(await localeOf(db, input.workspaceId));
 
@@ -277,16 +297,26 @@ export async function decideToolApproval(
       roomId: await roomOf(db, row.teamId),
       kind: "system",
       requestId: row.requestId,
-      body: input.allow
-        ? words.room.toolAllowed(row.agentName)
-        : words.room.toolRefused(row.agentName),
+      body: checkpoint
+        ? input.allow
+          ? words.flow.checkpointContinue
+          : words.flow.checkpointStop
+        : input.allow
+          ? words.room.toolAllowed(row.agentName)
+          : words.room.toolRefused(row.agentName),
     });
   }
   await db.insert(auditLog).values({
     workspaceId: input.workspaceId,
     actorType: "user",
     actorId: input.userId,
-    action: input.allow ? "tool.allowed" : "tool.refused",
+    action: checkpoint
+      ? input.allow
+        ? "checkpoint.continued"
+        : "checkpoint.stopped"
+      : input.allow
+        ? "tool.allowed"
+        : "tool.refused",
     target: row.id,
     metadata: { tool: row.payload?.tool ?? null, input: row.payload?.input ?? null },
   });
@@ -357,11 +387,16 @@ export async function requestChanges(
 export async function postUserMessage(
   db: DbOrTx,
   input: { workspaceId: string; teamId: string; userId: string; body: string },
-): Promise<{ messageId: string; mentionedAgentIds: string[] }> {
+): Promise<{
+  messageId: string;
+  /** Who answers: the agents @mentioned, else the team lead. */
+  replyAgentIds: string[];
+  replyAgentNames: string[];
+}> {
   const body = input.body.trim();
   if (!body) throw new WorkError("empty_message");
   const [t] = await db
-    .select({ id: team.id })
+    .select({ id: team.id, leadKey: team.leadKey })
     .from(team)
     .where(and(eq(team.id, input.teamId), eq(team.workspaceId, input.workspaceId)));
   if (!t) throw new WorkError("team_not_found");
@@ -378,15 +413,23 @@ export async function postUserMessage(
   if (!msg) throw new WorkError("message_not_sent");
 
   const agents = await db
-    .select({ id: agent.id, name: agent.name })
+    .select({ id: agent.id, key: agent.key, name: agent.name })
     .from(agent)
-    .where(eq(agent.teamId, input.teamId));
+    .where(eq(agent.teamId, input.teamId))
+    .orderBy(asc(agent.position));
   const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const text = normalize(body);
-  const mentioned = agents.filter((a) => text.includes(`@${normalize(a.name)}`)).map((a) => a.id);
+  const mentioned = agents.filter((a) => text.includes(`@${normalize(a.name)}`));
+  // Nobody named: the lead answers, the way a team lead picks up a question in a chat.
+  const lead = agents.find((a) => a.key === t.leadKey) ?? agents[0];
+  const repliers = mentioned.length > 0 ? mentioned : lead ? [lead] : [];
 
   await notify(db, { type: "room", workspaceId: input.workspaceId, teamId: input.teamId });
-  return { messageId: msg.id, mentionedAgentIds: mentioned };
+  return {
+    messageId: msg.id,
+    replyAgentIds: repliers.map((a) => a.id),
+    replyAgentNames: repliers.map((a) => a.name),
+  };
 }
 
 /** The latest delivery of a request, used by the retry action. */

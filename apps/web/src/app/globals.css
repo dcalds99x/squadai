@@ -15,55 +15,202 @@
   }
 }
 
-/* Agent output, rendered from Markdown. */
+/* Agent output, rendered from Markdown: a clean, readable document. */
 @layer components {
   .doc {
-    font-family: Georgia, "Source Serif 4", serif;
-    font-size: 18px;
+    max-width: 72ch;
+    font-family: var(--font-sans);
+    font-size: 16px;
     line-height: 1.7;
-    color: #22243a;
+    color: #2a2d42;
+    /* Long URLs wrap; ordinary words never split. */
+    overflow-wrap: break-word;
   }
   .doc > * + * {
-    margin-top: 0.9em;
+    margin-top: 1em;
   }
   .doc h1,
   .doc h2,
-  .doc h3 {
+  .doc h3,
+  .doc h4 {
+    font-family: var(--font-display);
     font-weight: 700;
     line-height: 1.25;
+    letter-spacing: -0.01em;
     color: var(--color-ink);
   }
   .doc h1 {
-    font-size: 1.6em;
+    font-size: 1.75em;
   }
   .doc h2 {
-    font-size: 1.3em;
-    margin-top: 1.4em;
+    font-size: 1.35em;
+    margin-top: 1.8em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--color-line);
   }
   .doc h3 {
-    font-size: 1.1em;
+    font-size: 1.12em;
+    margin-top: 1.5em;
+  }
+  .doc h4 {
+    font-size: 1em;
+    margin-top: 1.3em;
+  }
+  .doc h2 + *,
+  .doc h3 + *,
+  .doc h4 + * {
+    margin-top: 0.5em;
+  }
+  .doc strong {
+    font-weight: 650;
+    color: var(--color-ink);
+  }
+  .doc ul,
+  .doc ol {
+    padding-left: 1.5em;
   }
   .doc ul {
     list-style: disc;
-    padding-left: 1.4em;
   }
   .doc ol {
     list-style: decimal;
-    padding-left: 1.4em;
+  }
+  .doc li + li {
+    margin-top: 0.35em;
+  }
+  .doc li > ul,
+  .doc li > ol {
+    margin-top: 0.35em;
+  }
+  .doc li::marker {
+    color: var(--color-subtle);
+  }
+  .doc ul.contains-task-list {
+    list-style: none;
+    padding-left: 0.2em;
+  }
+  .doc .task-list-item input {
+    margin-right: 0.5em;
+    accent-color: var(--color-brand);
   }
   .doc a {
     color: var(--color-brand-strong);
     text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .doc blockquote {
-    border-left: 3px solid var(--color-line-strong);
-    padding-left: 1em;
-    color: var(--color-muted);
+    border-left: 3px solid var(--color-brand);
+    background: var(--color-brand-wash);
+    border-radius: 0 10px 10px 0;
+    padding: 0.6em 1em;
+    color: var(--color-ink-2);
+  }
+  .doc hr {
+    border: 0;
+    border-top: 1px solid var(--color-line);
+    margin: 2em 0;
   }
   .doc code {
-    font-size: 0.85em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
     background: var(--color-canvas);
-    padding: 0.1em 0.35em;
+    padding: 0.12em 0.4em;
     border-radius: 6px;
+  }
+  .doc pre {
+    background: #1b1d2a;
+    color: #e8e9f3;
+    padding: 1em 1.1em;
+    border-radius: 12px;
+    overflow-x: auto;
+    line-height: 1.55;
+  }
+  .doc pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+  }
+  .doc-table {
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+  }
+  .doc table {
+    width: 100%;
+    /* Narrow columns would split words: scroll sideways instead. */
+    min-width: 34rem;
+    border-collapse: collapse;
+    font-size: 0.92em;
+    line-height: 1.5;
+  }
+  .doc th {
+    background: var(--color-canvas);
+    font-weight: 650;
+    color: var(--color-ink);
+    text-align: left;
+  }
+  .doc th,
+  .doc td {
+    padding: 0.6em 0.85em;
+    border-bottom: 1px solid var(--color-line);
+    vertical-align: top;
+  }
+  .doc tr:last-child td {
+    border-bottom: 0;
+  }
+  .doc tbody tr:nth-child(even) {
+    background: #fafbfd;
+  }
+}
+
+/* Room micro-interactions: messages slide in, typing dots pulse. */
+@layer components {
+  .msg-in {
+    animation: msg-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .typing-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: typing 1.2s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .typing-dot:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-in,
+  .typing-dot {
+    animation: none;
   }
 }

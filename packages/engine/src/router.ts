@@ -66,6 +66,33 @@ const STOP = new Set([
   "your",
   "can",
   "you",
+  // Short function words, which match almost any text.
+  "in",
+  "on",
+  "of",
+  "to",
+  "at",
+  "by",
+  "as",
+  "an",
+  "or",
+  "is",
+  "it",
+  "my",
+  "we",
+  "us",
+  "em",
+  "de",
+  "do",
+  "da",
+  "no",
+  "na",
+  "ao",
+  "os",
+  "as",
+  "um",
+  "se",
+  "eu",
 ]);
 
 /** Words people use that point to a kind of work, mapped to words in playbooks. */
@@ -110,15 +137,24 @@ export function normalize(text: string): string[] {
     .filter((w) => w.length >= 2 && !STOP.has(w));
 }
 
-export function scoreText(prompt: string, corpus: string): { score: number; matched: string[] } {
+/**
+ * How well a prompt matches a text: 2 per word found, 1 per synonym. Words
+ * also match on their first `stem` letters ("articles" ~ "article"); a longer
+ * stem is stricter ("checkout" stops matching "checking" at 6).
+ */
+export function scoreText(
+  prompt: string,
+  corpus: string,
+  stem = 5,
+): { score: number; matched: string[] } {
   const words = new Set(normalize(corpus));
-  const stems = [...words].map((w) => w.slice(0, 5));
+  const stems = [...words].map((w) => w.slice(0, stem));
   const matched = new Set<string>();
   let score = 0;
   for (const w of normalize(prompt)) {
     const candidates = [w, ...(SYNONYMS[w] ?? [])];
     for (const c of candidates) {
-      if (words.has(c) || (c.length >= 5 && stems.includes(c.slice(0, 5)))) {
+      if (words.has(c) || (c.length >= stem && stems.includes(c.slice(0, stem)))) {
         score += c === w ? 2 : 1;
         matched.add(w);
         break;

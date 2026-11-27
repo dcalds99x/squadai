@@ -4,6 +4,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { deleteTeamAction } from "@/app/(office)/actions";
+import { ConfirmAction } from "@/components/confirm-action";
+import { FlowDiagram, flowNodes } from "@/components/flow-diagram";
 import { LiveRefresh } from "@/components/live-refresh";
 import { RequestForm } from "@/components/request-form";
 import { Room } from "@/components/room";
@@ -22,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TeamPage({ params }: Props) {
-  const { workspace } = await requireOffice();
+  const { user, workspace } = await requireOffice();
   const t = await getTranslations("team");
   const db = getDb();
   const [raw, rawOptions, text] = await Promise.all([
@@ -48,6 +51,8 @@ export default async function TeamPage({ params }: Props) {
   const tz = env().SQUADAI_TIMEZONE;
   const teamOptions = options.filter((o) => o.id === team.id);
   const agentByKey = new Map(team.agents.map((a) => [a.key, a]));
+  const nameOf = (key: string) => agentByKey.get(key)?.name ?? key;
+  const lead = agentByKey.get(team.leadKey ?? "") ?? team.agents[0];
 
   const columns = [
     {
@@ -72,8 +77,8 @@ export default async function TeamPage({ params }: Props) {
   const working = team.agents.filter((a) => team.presence.has(a.id)).map((a) => a.name);
 
   return (
-    <div className="flex min-h-screen flex-wrap items-stretch">
-      <main className="flex min-w-0 flex-[999_1_520px] flex-col gap-6 px-6 py-8 sm:px-9">
+    <div className="flex min-h-screen flex-wrap items-stretch lg:min-h-0 lg:flex-1 lg:flex-nowrap lg:overflow-hidden">
+      <main className="flex min-w-0 flex-[999_1_520px] flex-col gap-6 px-6 py-8 sm:px-9 lg:overflow-y-auto">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex max-w-2xl flex-col gap-2">
             <span className="text-[13px] font-semibold tracking-wider text-muted uppercase">
@@ -82,7 +87,21 @@ export default async function TeamPage({ params }: Props) {
             <h1 className="font-display text-[34px] font-bold tracking-tight">{team.name}</h1>
             <p className="leading-relaxed text-muted">{team.description}</p>
           </div>
-          <LiveRefresh teamId={team.id} />
+          <div className="flex items-center gap-3">
+            <LiveRefresh teamId={team.id} />
+            {workspace.role !== "member" && (
+              <ConfirmAction
+                danger
+                label={t("remove.label")}
+                question={t("remove.question", { team: team.name })}
+                detail={t("remove.detail")}
+                confirmLabel={t("remove.confirm")}
+                keepLabel={t("remove.keep")}
+                pendingLabel={t("remove.working")}
+                run={deleteTeamAction.bind(null, team.id)}
+              />
+            )}
+          </div>
         </header>
 
         <ul aria-label={t("people")} className="flex flex-wrap gap-2.5">
@@ -195,7 +214,18 @@ export default async function TeamPage({ params }: Props) {
           <h2 id="h-como" className="font-display text-lg font-bold">
             {t("howWeWork")}
           </h2>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+            <div className="flex flex-col gap-2.5 rounded-2xl border border-brand/40 bg-surface p-4">
+              <strong className="text-[15px]">{t("openRequest")}</strong>
+              <span className="text-[13px] leading-snug text-muted">
+                {t("openRequestHint", { lead: lead?.name ?? "" })}
+              </span>
+              <FlowDiagram
+                label={t("openRequest")}
+                nodes={flowNodes({ mode: "adaptive", lead: lead?.name ?? "" }, nameOf)}
+                approval
+              />
+            </div>
             {team.playbooks.map((p) => (
               <div
                 key={p.id}
@@ -203,22 +233,11 @@ export default async function TeamPage({ params }: Props) {
               >
                 <strong className="text-[15px]">{p.name}</strong>
                 <span className="text-[13px] leading-snug text-muted">{p.description}</span>
-                <ol className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-                  {p.steps.map((s) => {
-                    const who = agentByKey.get(s.agentKey);
-                    return (
-                      <li key={`${s.agentKey}:${s.task}`} className="flex items-center gap-1.5">
-                        <span className="rounded-full bg-canvas px-2.5 py-1">
-                          {who?.name ?? s.agentKey}
-                        </span>
-                        <span aria-hidden="true" className="text-subtle">
-                          →
-                        </span>
-                      </li>
-                    );
-                  })}
-                  <li className="rounded-full bg-ink px-2.5 py-1 text-white">{t("youApprove")}</li>
-                </ol>
+                <FlowDiagram
+                  label={p.name}
+                  nodes={flowNodes(p, nameOf)}
+                  approval={p.requiresApproval}
+                />
               </div>
             ))}
           </div>
@@ -231,7 +250,12 @@ export default async function TeamPage({ params }: Props) {
         people={team.agents.length}
         working={working}
         timeZone={tz}
-        agentNames={team.agents.map((a) => a.name)}
+        agents={team.agents.map((a) => ({ name: a.name, avatar: a.avatar }))}
+        activity={team.agents.flatMap((a) => {
+          const doing = team.presence.get(a.id);
+          return doing ? [{ name: a.name, avatar: a.avatar, task: text.c(doing.task) }] : [];
+        })}
+        userName={user.name}
       />
     </div>
   );

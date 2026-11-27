@@ -1,5 +1,6 @@
 # Full stack:      docker compose up --build
 # Database only:   docker compose up -d postgres   (for `pnpm dev`)
+# With tracing:    docker compose --profile tracing up --build   (Jaeger UI on :16686)
 name: squadai
 
 x-database-url: &database-url postgres://squadai:squadai@postgres:5432/squadai
@@ -35,6 +36,10 @@ services:
     environment:
       DATABASE_URL: *database-url
       SQUADAI_MASTER_KEY: ${SQUADAI_MASTER_KEY:-}
+      # Traces go out over OTLP when an endpoint is set (Jaeger below, Langfuse, …).
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      SQUADAI_TRACE_CONTENT: ${SQUADAI_TRACE_CONTENT:-}
     depends_on:
       migrate: { condition: service_completed_successfully }
 
@@ -57,6 +62,14 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+
+  # Optional trace viewer. Set OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 for the worker.
+  jaeger:
+    image: jaegertracing/jaeger:2.11.0
+    profiles: [tracing]
+    ports:
+      - "16686:16686"
+      - "4318:4318"
 
 volumes:
   pgdata:

@@ -18,6 +18,7 @@ export const BUILTIN_TOOLS = [
   "github_comment",
   "request_help",
   "github_merge",
+  "ask_teammate",
 ] as const;
 export type BuiltinTool = (typeof BUILTIN_TOOLS)[number];
 

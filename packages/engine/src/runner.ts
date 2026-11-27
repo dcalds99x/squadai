@@ -12,6 +12,8 @@
  * and what it is waiting for) lives in `step.checkpoint`, so pauses survive
  * restarts and any worker can pick the run back up.
  */
+
+import { trace } from "@opentelemetry/api";
 import {
   createLogger,
   type Logger,
@@ -30,16 +32,26 @@ import {
   formatToolResult,
   friendlyError,
   generateWithFallback,
+  inSpan,
   LEGACY_REVIEW_NOTES_MARKER,
   parseToolCall,
   REVIEW_NOTES_MARKER,
   TOOL_CALL_PATTERN,
   toolInstructions,
 } from "@squadai/providers";
-import { and, asc, desc, eq, gte, inArray, max, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, max, ne, or, sql } from "drizzle-orm";
 import { notify } from "./events.ts";
+import {
+  defaultFlow,
+  type FlowStep,
+  parseFlowPlan,
+  parseVerdict,
+  producesText,
+  resolveFlow,
+} from "./flow.ts";
 import { resolveHandoffsFor } from "./handoffs.ts";
 import type { ModelContext } from "./models.ts";
+import { checkScope, describeOutOfScope, scopeInstructions } from "./scope.ts";
 import {
   type OfferedTool,
   type ToolContext,
@@ -80,7 +92,16 @@ export interface RunInput {
   feedback?: string;
 }
 
-export type RunOutcome = "awaiting_approval" | "delivered" | "waiting" | "failed" | "skipped";
+export type RunOutcome =
+  | "awaiting_approval"
+  | "delivered"
+  | "waiting"
+  | "failed"
+  | "skipped"
+  /** The lead found the request outside the team's scope. */
+  | "declined"
+  /** The person stopped the work at a checkpoint. */
+  | "cancelled";
 
 export interface RunResult {
   outcome: RunOutcome;
@@ -89,6 +110,28 @@ export interface RunResult {
 }
 
 const EFFORT: Record<ModelTier, Effort> = { economy: "low", balanced: "medium", max: "high" };
+
+/**
+ * How long a worker holds a run without news. Renewed before every model call;
+ * shorter than pg-boss's job expiry, so a run whose worker died is free again
+ * by the time the job is retried.
+ */
+const LEASE_MS = 10 * 60_000;
+const lease = () => new Date(Date.now() + LEASE_MS);
+
+/** The person cancelled the request (or deleted it) while it ran. */
+class RunCancelledError extends Error {
+  constructor() {
+    super("The request was cancelled.");
+    this.name = "RunCancelledError";
+  }
+}
+
+/** Postgres "unique_violation", however the driver wraps it. */
+function isUniqueViolation(error: unknown): boolean {
+  const code = (e: unknown) => (e as { code?: unknown } | null)?.code;
+  return code(error) === "23505" || code((error as { cause?: unknown } | null)?.cause) === "23505";
+}
 const MAX_TOOL_CALLS = 4;
 const MAX_MODEL_CALLS = 8;
 
@@ -122,6 +165,19 @@ type StepKind = CallKind;
 
 type StepOutcome = { status: "done"; text: string } | { status: "waiting" };
 
+interface TurnOptions {
+  /** The text a review step revises (only the demo model reads it). */
+  reviewing?: string;
+  /** Review loops: this round and how many the step allows. */
+  round?: number;
+  rounds?: number;
+  /** A draft rewriting an earlier version. */
+  rework?: boolean;
+  noTools?: boolean;
+  effort?: Effort;
+  maxOutputTokens?: number;
+}
+
 /** Splits a review into the revised text and its margin notes. */
 export function parseReview(text: string): {
   text: string;
@@ -136,7 +192,13 @@ export function parseReview(text: string): {
     .filter((line) => line.includes("::"))
     .map((line) => {
       const [anchor, ...rest] = line.split("::");
-      return { anchor: (anchor ?? "").trim(), body: rest.join("::").trim() };
+      // Models often quote the excerpt; the page adds its own quotes.
+      const excerpt = (anchor ?? "")
+        .trim()
+        .replace(/^[-*•\s]+/, "")
+        .replace(/^["“”'']+|["“”'']+$/g, "")
+        .trim();
+      return { anchor: excerpt, body: rest.join("::").trim() };
     })
     .filter((n) => n.anchor && n.body);
   return { text: (body ?? "").trim(), notes };
@@ -194,7 +256,23 @@ export async function checkBudget(
   if (Number(spent?.micros ?? 0) / 10_000 >= limit.cents) throw new BudgetExceededError();
 }
 
-export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunResult> {
+/**
+ * Runs (or resumes) a request. Traced as one `squadai.run` span, with a
+ * child span per step and per tool call, and the model calls inside them.
+ */
+export function runRequest(deps: RunDeps, input: RunInput): Promise<RunResult> {
+  return inSpan(
+    "squadai.run",
+    { "squadai.request_id": input.requestId, "squadai.revision": Boolean(input.feedback) },
+    async (span) => {
+      const result = await runRequestTraced(deps, input);
+      span.setAttribute("squadai.outcome", result.outcome);
+      return result;
+    },
+  );
+}
+
+async function runRequestTraced(deps: RunDeps, input: RunInput): Promise<RunResult> {
   const { db } = deps;
   const log = (deps.log ?? createLogger({ service: "engine" })).child({
     requestId: input.requestId,
@@ -210,14 +288,21 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
       prompt: request.prompt,
       status: request.status,
       playbookId: request.playbookId,
+      flow: request.flow,
       teamName: team.name,
+      leadKey: team.leadKey,
+      scope: team.scope,
     })
     .from(request)
     .innerJoin(team, eq(team.id, request.teamId))
     .where(eq(request.id, input.requestId));
-  if (!req?.playbookId || req.status === "done" || req.status === "cancelled") return skipped;
+  if (!req || req.status === "done" || req.status === "cancelled") return skipped;
 
-  const [pb] = await db.select().from(playbook).where(eq(playbook.id, req.playbookId));
+  // No playbook: the team lead decides the flow ("adaptive").
+  const [pb] = req.playbookId
+    ? await db.select().from(playbook).where(eq(playbook.id, req.playbookId))
+    : [];
+  if (req.playbookId && !pb) return skipped;
   const [del] = await db
     .select()
     .from(delivery)
@@ -225,7 +310,13 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
     .orderBy(desc(delivery.createdAt))
     .limit(1);
   const [teamRoom] = await db.select({ id: room.id }).from(room).where(eq(room.teamId, req.teamId));
-  if (!pb || !del || !teamRoom) return skipped;
+  if (!del || !teamRoom) return skipped;
+  trace.getActiveSpan()?.setAttributes({
+    "squadai.workspace_id": req.workspaceId,
+    "squadai.team": req.teamName,
+    "squadai.mode": pb?.mode ?? "adaptive",
+    "squadai.playbook": pb?.name ?? "",
+  });
   if (del.status === "delivered" || (del.status === "awaiting_approval" && !input.feedback))
     return skipped;
 
@@ -240,6 +331,7 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
       model: agent.model,
       fallbackModel: agent.fallbackModel,
       style: agent.style,
+      skills: agent.skills,
     })
     .from(agent)
     .where(eq(agent.teamId, req.teamId))
@@ -269,7 +361,13 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
   // Everything this run writes or asks follows the workspace language.
   const locale = workspaceLocale(models.settings);
   const words = wordsFor(locale);
-  const allTools = workspaceTools(models, otherTeams, locale);
+  const allTools = workspaceTools(
+    models,
+    otherTeams,
+    locale,
+    agents.map((a) => ({ key: a.key, name: a.name })),
+  );
+  const scopeLine = scopeInstructions(words, req.scope, otherTeams);
 
   const ping = (type: "room" | "request" | "presence" | "delivery") =>
     notify(db, {
@@ -311,16 +409,51 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
         )
         .orderBy(desc(run.createdAt))
         .limit(1);
+  // Claim the run. If another worker holds it (the same request queued twice),
+  // this job steps aside: a request never runs twice at once.
   if (!currentRun) {
-    [currentRun] = await db
-      .insert(run)
-      .values({ requestId: req.id, status: "running", startedAt: new Date() })
-      .returning();
+    try {
+      [currentRun] = await db
+        .insert(run)
+        .values({
+          requestId: req.id,
+          status: "running",
+          startedAt: new Date(),
+          leaseUntil: lease(),
+        })
+        .returning();
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      log.info("another worker already started this request");
+      return skipped;
+    }
   } else {
-    await db.update(run).set({ status: "running", error: null }).where(eq(run.id, currentRun.id));
+    const [claimed] = await db
+      .update(run)
+      .set({ status: "running", error: null, leaseUntil: lease() })
+      .where(
+        and(
+          eq(run.id, currentRun.id),
+          or(ne(run.status, "running"), isNull(run.leaseUntil), lt(run.leaseUntil, new Date())),
+        ),
+      )
+      .returning({ id: run.id });
+    if (!claimed) {
+      log.info("another worker is running this request", { runId: currentRun.id });
+      return skipped;
+    }
   }
   if (!currentRun) throw new Error("Could not create run.");
   const runId = currentRun.id;
+  // Renewing the lease is also where a run learns it was cancelled.
+  const renewLease = async () => {
+    const [current] = await db
+      .update(run)
+      .set({ leaseUntil: lease() })
+      .where(eq(run.id, runId))
+      .returning({ status: run.status });
+    if (!current || current.status === "cancelled") throw new RunCancelledError();
+  };
   const rows = await db
     .select()
     .from(step)
@@ -330,7 +463,7 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
   const ensureStep = async (
     position: number,
     who: AgentRow,
-    meta: { kind: StepKind; task: string },
+    meta: { kind: StepKind | "checkpoint"; task: string },
   ): Promise<StepRow> => {
     const existing = rows.find((r) => r.position === position);
     if (existing) return existing;
@@ -380,17 +513,44 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
       .set({ checkpoint: cp as unknown as Record<string, unknown>, ...(status ? { status } : {}) })
       .where(eq(step.id, row.id));
 
-  const agentTurn = async (
+  const agentTurn = (
     row: StepRow,
     who: AgentRow,
     kind: StepKind,
     prompt: string,
-    /** The text a review step revises (only the demo model reads it). */
-    reviewing?: string,
+    opts: TurnOptions = {},
+  ): Promise<StepOutcome> =>
+    row.status === "done"
+      ? Promise.resolve({ status: "done", text: String(row.output?.text ?? "") })
+      : inSpan(
+          `squadai.step ${kind}`,
+          {
+            "squadai.step_id": row.id,
+            "squadai.position": row.position,
+            "squadai.agent": who.name,
+            "squadai.step_kind": kind,
+            ...(opts.round ? { "squadai.round": opts.round } : {}),
+          },
+          async (span) => {
+            const outcome = await agentTurnTraced(row, who, kind, prompt, opts);
+            span.setAttribute("squadai.step_status", outcome.status);
+            return outcome;
+          },
+        );
+
+  const agentTurnTraced = async (
+    row: StepRow,
+    who: AgentRow,
+    kind: StepKind,
+    prompt: string,
+    opts: TurnOptions,
   ): Promise<StepOutcome> => {
     if (row.status === "done") return { status: "done", text: String(row.output?.text ?? "") };
     currentStepId = row.id;
-    const offered = toolsForAgent(allTools, policiesOf(who.id));
+    // Planning and talking things over are quick turns, without tools.
+    const offered = opts.noTools
+      ? new Map<string, OfferedTool>()
+      : toolsForAgent(allTools, policiesOf(who.id));
     const toolCtx: ToolContext = {
       db,
       log,
@@ -436,11 +596,12 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
         }
       } else {
         const [h] = await db.select().from(handoff).where(eq(handoff.id, pending.id));
-        if (!h || h.status === "open" || h.status === "in_progress") {
+        // A missing handoff means the helping team was removed: it can't help.
+        if (h && (h.status === "open" || h.status === "in_progress")) {
           await saveCheckpoint(row, cp, "waiting");
           return { status: "waiting" };
         }
-        result = h.status === "done" ? (h.result ?? "") : words.toolResult.helpFailed;
+        result = h?.status === "done" ? (h.result ?? "") : words.toolResult.helpFailed;
       }
       cp.turns.push({ role: "user", content: formatToolResult(pending.tool, result) });
       cp.pending = undefined;
@@ -455,7 +616,11 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
       by: AgentRow,
     ): Promise<{ kind: "text"; text: string } | { kind: "wait" }> {
       try {
-        const outcome = await tool.def.run(toolInput, ctx);
+        const outcome = await inSpan(
+          `squadai.tool ${tool.def.name}`,
+          { "squadai.tool": tool.def.name, "squadai.agent": by.name },
+          () => tool.def.run(toolInput, ctx),
+        );
         if (outcome.kind === "wait_handoff") {
           cp.pending = {
             type: "handoff",
@@ -488,7 +653,8 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
     const system = [
       who.instructions,
       words.prompt.system(who.name, who.role, req.teamName),
-      toolInstructions(toSpecs(offered), locale),
+      scopeLine,
+      offered.size > 0 ? toolInstructions(toSpecs(offered), locale) : "",
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -497,13 +663,17 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
       kind,
       topic: req.prompt,
       locale,
-      reviewing,
+      reviewing: opts.reviewing,
+      round: opts.round,
+      rounds: opts.rounds,
+      rework: opts.rework,
       tools: [...offered.keys()],
       teammates: agents.map((a) => ({ key: a.key, name: a.name })),
       teams: otherTeams,
     };
 
     while (cp.modelCalls < MAX_MODEL_CALLS) {
+      await renewLease();
       await checkBudget(db, req.workspaceId);
       const result = await generateWithFallback(
         resolveAgentModels(who, models.settings),
@@ -512,7 +682,8 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
           prompt,
           continuation: cp.turns,
           style: who.style,
-          effort: EFFORT[who.tier],
+          effort: opts.effort ?? EFFORT[who.tier],
+          maxOutputTokens: opts.maxOutputTokens,
           hint,
         },
         models.factory,
@@ -635,98 +806,336 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
       }));
   };
 
-  log.info("run started", { runId, mode: pb.mode, revision });
+  log.info("run started", { runId, mode: pb?.mode ?? "adaptive", revision });
 
   let lastAgent: AgentRow | null = null;
   let finalText = "";
   let waiting = false;
+  /** Set when the run ends without a delivery: out of scope, or stopped at a checkpoint. */
+  let ended: "declined" | "cancelled" | null = null;
 
   try {
-    const defs = pb.steps.filter((d) => byKey.has(d.agentKey));
-    if (defs.length === 0) throw new Error("Playbook has no valid steps.");
+    if (!pb || pb.mode === "sequential") {
+      let pos = 0;
+      let flowSteps: FlowStep[];
 
-    if (pb.mode === "sequential") {
-      const firstProducing = defs.length > 1 ? 1 : 0;
-      const todo = revision ? defs.slice(firstProducing) : defs;
-      let research: { by: string; text: string } | null = null;
+      if (pb) {
+        flowSteps = resolveFlow(pb.steps.filter((d) => byKey.has(d.agentKey)));
+        if (flowSteps.length === 0) throw new Error("Playbook has no valid steps.");
+      } else if (revision && req.flow) {
+        // A revision follows the flow the lead chose the first time.
+        flowSteps = resolveFlow(req.flow.steps.filter((d) => byKey.has(d.agentKey)));
+      } else {
+        // ── The lead plans a free-form request ───────────────────────────
+        const lead = byKey.get(req.leadKey ?? "") ?? agents[0];
+        if (!lead) throw new Error("Team has no agents.");
+        const row = await ensureStep(pos++, lead, { kind: "triage", task: words.flow.planning });
+        const wasDone = row.status === "done";
+        if (row.status === "pending") await say(lead.id, words.flow.planning);
+        const out = await agentTurn(
+          row,
+          lead,
+          "triage",
+          words.flowPrompt.triage(
+            req.prompt,
+            req.teamName,
+            agents
+              .map((a) => words.flowPrompt.roster(a.key, a.name, a.role, a.skills.join(", ")))
+              .join("\n"),
+            words.scopePrompt.scopeLines(
+              (req.scope?.does ?? []).join("; "),
+              (req.scope?.doesNot ?? []).join("; "),
+            ),
+          ),
+          { noTools: true, effort: "low", maxOutputTokens: 800 },
+        );
+        if (out.status === "waiting") throw new Error("Planning can't wait.");
+        const keys = agents.map((a) => a.key);
+        const plan = parseFlowPlan(out.text, keys, lead.key) ?? {
+          fit: "in" as const,
+          title: "",
+          steps: defaultFlow(keys, lead.key, req.prompt),
+        };
+        if (plan.fit === "out") {
+          if (!wasDone) {
+            const { alternatives } = await checkScope(db, {
+              workspaceId: req.workspaceId,
+              teamId: req.teamId,
+              prompt: req.prompt,
+            });
+            await say(
+              lead.id,
+              describeOutOfScope(words, req.teamName, {
+                fit: "out",
+                reason: plan.reason,
+                alternatives,
+              }),
+            );
+          }
+          ended = "declined";
+          flowSteps = [];
+        } else {
+          flowSteps = plan.steps.length ? plan.steps : defaultFlow(keys, lead.key, req.prompt);
+          if (!wasDone) {
+            const title = plan.title || words.flow.customKind;
+            await db
+              .update(request)
+              .set({ flow: { title, steps: flowSteps } })
+              .where(eq(request.id, req.id));
+            await db.update(delivery).set({ kind: title }).where(eq(delivery.id, del.id));
+            await say(
+              lead.id,
+              words.flow.plan(title, describeSteps(words, flowSteps, byKey, true)),
+            );
+          }
+        }
+      }
+
+      // ── Run the flow ──────────────────────────────────────────────────
+      const todo = revision ? flowSteps.filter((s) => producesText(s.kind)) : flowSteps;
+      const context: { by: string; text: string; decided: boolean }[] = [];
       let latest = current;
-      for (let i = 0; i < todo.length; i++) {
+      // Set inside `draft`, so TypeScript must not narrow it to null.
+      let writer = null as AgentRow | null;
+      let notesForWriter = null as { by: string; notes: string } | null;
+
+      const nextName = (i: number) => byKey.get(todo[i + 1]?.agentKey ?? "")?.name;
+
+      /** One writing turn: a first draft, a revision after feedback, or a rewrite after review notes. */
+      const draft = async (who: AgentRow, task: string, rework: boolean, next?: string) => {
+        const row = await ensureStep(pos++, who, { kind: "draft", task });
+        const wasDone = row.status === "done";
+        if (row.status === "pending")
+          await say(
+            who.id,
+            rework && notesForWriter
+              ? words.flow.reworking
+              : startLine(words, "draft", task, revision),
+          );
+        const out = await agentTurn(
+          row,
+          who,
+          "draft",
+          flowPrompt(words, {
+            kind: "draft",
+            task,
+            prompt: req.prompt,
+            context,
+            latest,
+            feedback: input.feedback,
+            notes: notesForWriter,
+          }),
+          { rework: rework || revision },
+        );
+        if (out.status === "waiting") return false;
+        if (!wasDone) {
+          await addVersion(
+            who,
+            rework || revision ? words.version.adjustment : words.version.draft,
+            out.text,
+          );
+          await say(who.id, endLine(words, "draft", next, 0));
+        }
+        latest = out.text;
+        writer = who;
+        lastAgent = who;
+        notesForWriter = null;
+        return true;
+      };
+
+      steps: for (let i = 0; i < todo.length && !ended; i++) {
         const def = todo[i];
         const who = def ? byKey.get(def.agentKey) : undefined;
         if (!def || !who) continue;
-        const indexInAll = revision ? i + firstProducing : i;
-        const kind: StepKind =
-          defs.length > 1 && indexInAll === 0
-            ? "research"
-            : defs.length > 2 && indexInAll === defs.length - 1
-              ? "review"
-              : "draft";
-        const row = await ensureStep(i, who, { kind, task: def.task });
-        const fresh = row.status === "pending";
-        if (fresh) await say(who.id, startLine(words, kind, def.task, revision));
-        const outcome = await agentTurn(
-          row,
-          who,
-          kind,
-          sequentialPrompt(words, {
-            kind,
-            task: def.task,
-            prompt: req.prompt,
-            research,
-            latest,
-            feedback: input.feedback,
-          }),
-          kind === "review" ? (latest ?? undefined) : undefined,
-        );
-        if (outcome.status === "waiting") {
-          waiting = true;
-          break;
+
+        switch (def.kind) {
+          case "research": {
+            const row = await ensureStep(pos++, who, { kind: "research", task: def.task });
+            const wasDone = row.status === "done";
+            if (row.status === "pending")
+              await say(who.id, startLine(words, "research", def.task, revision));
+            const out = await agentTurn(
+              row,
+              who,
+              "research",
+              flowPrompt(words, {
+                kind: "research",
+                task: def.task,
+                prompt: req.prompt,
+                context,
+                latest: null,
+              }),
+            );
+            if (out.status === "waiting") {
+              waiting = true;
+              break steps;
+            }
+            context.push({ by: who.name, text: out.text, decided: false });
+            if (!wasDone) await say(who.id, endLine(words, "research", nextName(i), 0));
+            lastAgent = who;
+            break;
+          }
+
+          case "draft": {
+            if (!(await draft(who, def.task, false, nextName(i)))) {
+              waiting = true;
+              break steps;
+            }
+            break;
+          }
+
+          case "review": {
+            const rounds = def.rounds ?? 1;
+            for (let round = 1; round <= rounds; round++) {
+              const canSendBack = round < rounds && writer !== null && writer.id !== who.id;
+              const row = await ensureStep(pos++, who, { kind: "review", task: def.task });
+              const wasDone = row.status === "done";
+              if (row.status === "pending" && round === 1)
+                await say(who.id, startLine(words, "review", def.task, revision));
+              const out = await agentTurn(
+                row,
+                who,
+                "review",
+                flowPrompt(words, {
+                  kind: "review",
+                  task: def.task,
+                  prompt: req.prompt,
+                  context,
+                  latest,
+                  verdict: canSendBack,
+                }),
+                { reviewing: latest ?? undefined, round, rounds: canSendBack ? rounds : 1 },
+              );
+              if (out.status === "waiting") {
+                waiting = true;
+                break steps;
+              }
+              const verdict = parseVerdict(out.text);
+              const parsed = parseReview(verdict.text);
+              const sendBack = canSendBack && verdict.revise;
+              if (sendBack && writer) {
+                // Back to the writer with the notes; the reviewer looks again next round.
+                if (!wasDone)
+                  await say(who.id, words.flow.sentBack(writer.name, parsed.notes.length));
+                notesForWriter = {
+                  by: who.name,
+                  notes:
+                    parsed.notes.map((n) => `- ${n.anchor}: ${n.body}`).join("\n") || parsed.text,
+                };
+                if (!(await draft(writer, def.task, true, who.name))) {
+                  waiting = true;
+                  break steps;
+                }
+                continue;
+              }
+              if (!wasDone) {
+                await addVersion(
+                  who,
+                  words.version.review,
+                  parsed.text || latest || "",
+                  parsed.notes,
+                );
+                await say(who.id, endLine(words, "review", undefined, parsed.notes.length));
+              }
+              latest = parsed.text || latest;
+              lastAgent = who;
+              break;
+            }
+            break;
+          }
+
+          case "discuss": {
+            const people = [who, ...(def.with ?? []).flatMap((k) => byKey.get(k) ?? [])];
+            const lines: string[] = [];
+            for (const [turn, person] of people.entries()) {
+              const row = await ensureStep(pos++, person, { kind: "discussion", task: def.task });
+              const wasDone = row.status === "done";
+              if (row.status === "pending" && turn === 0)
+                await say(who.id, words.flow.discussOpen(def.task));
+              const out = await agentTurn(
+                row,
+                person,
+                "discussion",
+                [
+                  words.prompt.request(req.prompt),
+                  ...contextLines(words, context),
+                  words.flowPrompt.discussion(def.task, lines.join("\n")),
+                ].join("\n\n"),
+                // The demo model reads the turn from `round`.
+                { noTools: true, effort: "low", maxOutputTokens: 400, round: turn + 1 },
+              );
+              if (out.status === "waiting") {
+                waiting = true;
+                break steps;
+              }
+              lines.push(`${person.name}: ${out.text.replace(/\s+/g, " ").trim()}`);
+              if (!wasDone) await say(person.id, out.text);
+            }
+            const row = await ensureStep(pos++, who, { kind: "summary", task: def.task });
+            const wasDone = row.status === "done";
+            const out = await agentTurn(
+              row,
+              who,
+              "summary",
+              words.flowPrompt.discussionSummary(def.task, lines.join("\n")),
+              { noTools: true, effort: "low", maxOutputTokens: 600 },
+            );
+            if (out.status === "waiting") {
+              waiting = true;
+              break steps;
+            }
+            context.push({ by: who.name, text: out.text, decided: true });
+            if (!wasDone) await say(who.id, words.flow.discussClosed);
+            lastAgent = who;
+            break;
+          }
+
+          case "checkpoint": {
+            const row = await ensureStep(pos++, who, { kind: "checkpoint", task: def.task });
+            if (row.status === "done") break;
+            const pendingId = (row.checkpoint as { approvalId?: string } | null)?.approvalId;
+            if (!pendingId) {
+              const [a] = await db
+                .insert(approval)
+                .values({
+                  workspaceId: req.workspaceId,
+                  deliveryId: del.id,
+                  stepId: row.id,
+                  requestedByAgentId: who.id,
+                  kind: "checkpoint",
+                  question: def.task,
+                })
+                .returning({ id: approval.id });
+              if (!a) throw new Error("Could not create approval.");
+              await db
+                .update(step)
+                .set({ status: "waiting", startedAt: new Date(), checkpoint: { approvalId: a.id } })
+                .where(eq(step.id, row.id));
+              await say(who.id, words.flow.checkpointAsk(def.task), "system", { approvalId: a.id });
+              await ping("delivery");
+              waiting = true;
+              break steps;
+            }
+            const [a] = await db.select().from(approval).where(eq(approval.id, pendingId));
+            if (!a || a.status === "pending") {
+              waiting = true;
+              break steps;
+            }
+            await db
+              .update(step)
+              .set({ status: a.status === "approved" ? "done" : "skipped", finishedAt: new Date() })
+              .where(eq(step.id, row.id));
+            if (a.status !== "approved") ended = "cancelled";
+            break;
+          }
         }
-        lastAgent = who;
-        if (kind === "research") {
-          research = { by: who.name, text: outcome.text };
-        } else if (row.status !== "done") {
-          const parsed =
-            kind === "review" ? parseReview(outcome.text) : { text: outcome.text, notes: [] };
-          await addVersion(
-            who,
-            kind === "review"
-              ? words.version.review
-              : revision
-                ? words.version.adjustment
-                : words.version.draft,
-            parsed.text,
-            parsed.notes,
-          );
-          latest = parsed.text;
-          await say(
-            who.id,
-            endLine(
-              words,
-              kind,
-              todo[i + 1] ? byKey.get(todo[i + 1]?.agentKey ?? "")?.name : undefined,
-              parsed.notes.length,
-            ),
-          );
-        } else {
-          latest = outcome.text;
-        }
-        if (kind === "research" && row.status !== "done") {
-          await say(
-            who.id,
-            endLine(
-              words,
-              kind,
-              todo[i + 1] ? byKey.get(todo[i + 1]?.agentKey ?? "")?.name : undefined,
-              0,
-            ),
-          );
-        }
-        finalText = latest ?? outcome.text;
         await ping("presence");
       }
+      finalText = latest ?? "";
     } else {
       // coordinator or parallel
+      const defs = pb.steps.filter((d) => byKey.has(d.agentKey));
+      if (defs.length === 0) throw new Error("Playbook has no valid steps.");
       const lead = byKey.get(
         (pb.mode === "coordinator" ? defs[0] : defs.at(-1))?.agentKey ?? "",
       ) as AgentRow;
@@ -823,6 +1232,10 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
       }
     }
   } catch (error) {
+    if (error instanceof RunCancelledError) {
+      log.info("run stopped: the request was cancelled", { runId });
+      return { outcome: "cancelled", followUps };
+    }
     const reason = friendlyError(error, locale);
     log.warn("run failed", { runId, error: String(error) });
     if (currentStepId)
@@ -848,9 +1261,19 @@ export async function runRequest(deps: RunDeps, input: RunInput): Promise<RunRes
     return { outcome: "waiting", followUps };
   }
 
+  if (ended) {
+    await db.update(run).set({ status: "done", finishedAt: new Date() }).where(eq(run.id, runId));
+    await db.update(request).set({ status: "cancelled" }).where(eq(request.id, req.id));
+    await db.update(delivery).set({ status: "cancelled" }).where(eq(delivery.id, del.id));
+    await ping("request");
+    await ping("delivery");
+    log.info("run ended without a delivery", { runId, reason: ended });
+    return { outcome: ended, followUps };
+  }
+
   await db.update(run).set({ status: "done", finishedAt: new Date() }).where(eq(run.id, runId));
 
-  if (pb.requiresApproval) {
+  if (pb?.requiresApproval ?? true) {
     await db.update(delivery).set({ status: "awaiting_approval" }).where(eq(delivery.id, del.id));
     await db.insert(approval).values({
       workspaceId: req.workspaceId,
@@ -901,28 +1324,70 @@ function endLine(
   return words.room.draftDone(nextName);
 }
 
-function sequentialPrompt(
+/** What earlier steps left for the next ones: research, and what discussions agreed. */
+function contextLines(
+  words: Words,
+  context: { by: string; text: string; decided: boolean }[],
+): string[] {
+  return context.map((c) =>
+    c.decided ? words.flowPrompt.decisions(c.by, c.text) : words.prompt.research(c.by, c.text),
+  );
+}
+
+function flowPrompt(
   words: Words,
   input: {
-    kind: StepKind;
+    kind: "research" | "draft" | "review";
     task: string;
     prompt: string;
-    research: { by: string; text: string } | null;
+    context: { by: string; text: string; decided: boolean }[];
     latest: string | null;
     feedback?: string;
+    /** A reviewer's notes the writer must address. */
+    notes?: { by: string; notes: string } | null;
+    /** The reviewer may send the draft back, so it starts with a verdict. */
+    verdict?: boolean;
   },
 ): string {
   const w = words.prompt;
   const parts = [w.request(input.prompt)];
   if (input.feedback) parts.push(w.feedback(input.feedback));
-  if (input.research && input.kind !== "research")
-    parts.push(w.research(input.research.by, input.research.text));
+  if (input.kind !== "research") parts.push(...contextLines(words, input.context));
   if (input.latest && input.kind === "review") parts.push(w.toReview(input.latest));
-  else if (input.latest && input.feedback) parts.push(w.current(input.latest));
+  else if (input.latest && (input.feedback || input.notes)) parts.push(w.current(input.latest));
+  if (input.notes) parts.push(words.flowPrompt.reviewerNotes(input.notes.by, input.notes.notes));
   parts.push(w.taskNow(input.task));
-  if (input.kind === "review") parts.push(w.reviewFormat(REVIEW_NOTES_MARKER));
-  else if (input.kind === "draft") parts.push(w.draftFormat);
+  if (input.kind === "review") {
+    if (input.verdict) parts.push(words.flowPrompt.verdict);
+    parts.push(w.reviewFormat(REVIEW_NOTES_MARKER));
+  } else if (input.kind === "draft") parts.push(w.draftFormat);
+  else parts.push(w.researchFormat);
   return parts.join("\n\n");
+}
+
+/** "Lia researches → Téo writes → Bia reviews (up to 2 rounds) → you approve". */
+export function describeSteps(
+  words: Words,
+  steps: FlowStep[],
+  byKey: Map<string, { name: string }>,
+  approval: boolean,
+): string[] {
+  const name = (key: string) => byKey.get(key)?.name ?? key;
+  const lines = steps.map((s) => {
+    switch (s.kind) {
+      case "research":
+        return words.flow.step.research(name(s.agentKey));
+      case "draft":
+        return words.flow.step.draft(name(s.agentKey));
+      case "review":
+        return words.flow.step.review(name(s.agentKey), s.rounds ?? 1);
+      case "discuss":
+        return words.flow.step.discuss([s.agentKey, ...(s.with ?? [])].map(name).join(", "));
+      default:
+        return words.flow.step.checkpoint;
+    }
+  });
+  return approval ? [...lines, words.flow.step.approve] : lines;
 }
 
 function planPrompt(words: Words, prompt: string, task: string, teammates: AgentRow[]): string {

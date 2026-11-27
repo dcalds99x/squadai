@@ -11,6 +11,21 @@ export type ToolPolicy = (typeof TOOL_POLICIES)[number];
 export const PLAYBOOK_MODES = ["sequential", "coordinator", "parallel"] as const;
 export type PlaybookMode = (typeof PLAYBOOK_MODES)[number];
 
+/**
+ * What one step of a team's flow does. Templates may leave it out; then the
+ * position decides (first = research, last of three or more = review, else draft).
+ * - research: gathers material the next steps build on.
+ * - draft: writes (or rewrites) the delivery.
+ * - review: checks the draft; with `rounds` > 1 it can send it back to the writer.
+ * - discuss: the agent and its `with` teammates trade views, then the agent sums up.
+ * - checkpoint: the team stops and asks the person before going on.
+ */
+export const FLOW_STEP_KINDS = ["research", "draft", "review", "discuss", "checkpoint"] as const;
+export type FlowStepKind = (typeof FLOW_STEP_KINDS)[number];
+
+/** Review rounds allowed in one review step, including the first. */
+export const MAX_REVIEW_ROUNDS = 3;
+
 /** The "Mais preciso ↔ Mais criativo" control on the agent profile. */
 export const AGENT_STYLES = ["precise", "balanced", "creative"] as const;
 export type AgentStyle = (typeof AGENT_STYLES)[number];

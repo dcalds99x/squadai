@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useActionState, useState, useTransition } from "react";
 import {
   type ActionState,
+  refreshProviderModelsAction,
   removeProviderAction,
   saveBudgetAction,
   saveProviderAction,
@@ -12,6 +13,7 @@ import {
   setDemoModeAction,
   setWorkspaceLocaleAction,
 } from "@/app/(office)/actions";
+import { type ModelOption, ModelPicker } from "@/components/model-picker";
 import { formatDecimalInput } from "@/lib/format";
 
 function Feedback({ state }: { state: ActionState }) {
@@ -121,7 +123,12 @@ export function ProviderCard({
 }: {
   provider: Provider;
   info: { name: string; sub: string; initial: string; bg: string };
-  connected: { id: string; keyHint: string | null; baseUrl: string | null } | null;
+  connected: {
+    id: string;
+    keyHint: string | null;
+    baseUrl: string | null;
+    models: number;
+  } | null;
   canEdit: boolean;
 }) {
   const t = useTranslations("models");
@@ -129,6 +136,8 @@ export function ProviderCard({
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<ActionState, FormData>(saveProviderAction, {});
   const [removing, startRemove] = useTransition();
+  const [refreshing, startRefresh] = useTransition();
+  const [refreshed, setRefreshed] = useState<ActionState>({});
 
   return (
     <article
@@ -156,8 +165,11 @@ export function ProviderCard({
         <span className="text-[13px] text-muted">
           {connected.keyHint ? t("keyHint", { hint: connected.keyHint }) : t("noKey")}
           {connected.baseUrl ? ` · ${connected.baseUrl}` : ""}
+          {" · "}
+          {t("modelCount", { count: connected.models })}
         </span>
       )}
+      {connected && <Feedback state={refreshed} />}
 
       {canEdit && !open && (
         <div className="flex gap-2">
@@ -168,6 +180,20 @@ export function ProviderCard({
           >
             {connected ? t("changeKey") : tc("connect")}
           </button>
+          {connected && (
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={() =>
+                startRefresh(async () =>
+                  setRefreshed(await refreshProviderModelsAction(connected.id)),
+                )
+              }
+              className="h-11 px-3.5 text-sm font-semibold text-brand-strong disabled:opacity-60"
+            >
+              {refreshing ? t("refreshing") : t("refreshModels")}
+            </button>
+          )}
           {connected && (
             <button
               type="button"
@@ -236,9 +262,11 @@ export function ProviderCard({
 
 export function TierForm({
   tiers,
+  options,
   canEdit,
 }: {
   tiers: { tier: string; label: string; primary: string; fallback: string }[];
+  options: ModelOption[];
   canEdit: boolean;
 }) {
   const t = useTranslations("models");
@@ -247,7 +275,7 @@ export function TierForm({
   return (
     <form action={action} className="flex flex-col gap-3">
       <div className="overflow-x-auto rounded-[18px] border border-line bg-surface">
-        <table className="w-full min-w-[560px] border-collapse text-sm">
+        <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr className="text-left text-subtle">
               <th scope="col" className="px-5 py-3.5 font-semibold">
@@ -268,22 +296,22 @@ export function TierForm({
                   {tier.label}
                 </th>
                 <td className="px-5 py-3">
-                  <input
-                    aria-label={t("primaryLabel", { tier: tier.label })}
+                  <ModelPicker
+                    label={t("primaryLabel", { tier: tier.label })}
                     name={`${tier.tier}.primary`}
                     defaultValue={tier.primary}
+                    options={options}
                     disabled={!canEdit}
-                    className="h-11 w-full rounded-[10px] border border-line-strong bg-[#F8F9FC] px-3 font-mono text-[13px]"
                   />
                 </td>
                 <td className="px-5 py-3">
-                  <input
-                    aria-label={t("fallbackLabel", { tier: tier.label })}
+                  <ModelPicker
+                    label={t("fallbackLabel", { tier: tier.label })}
                     name={`${tier.tier}.fallback`}
                     defaultValue={tier.fallback}
+                    options={options}
+                    allowNone
                     disabled={!canEdit}
-                    placeholder={t("none")}
-                    className="h-11 w-full rounded-[10px] border border-line-strong bg-[#F8F9FC] px-3 font-mono text-[13px]"
                   />
                 </td>
               </tr>

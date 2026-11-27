@@ -1,10 +1,22 @@
 id: market-research
-version: 4
+version: 5
 locale: en
 department: Research
 name: Market research
 description: We find out what the market is doing and bring back the numbers, with sources.
 color: "#1D6FD6"
+lead: clara
+scope:
+  does:
+    - Competitor analysis
+    - Market size and trends
+    - Pricing research
+    - Customer segments and personas
+    - Answering market questions with sources
+  doesNot:
+    - Writing blog posts, newsletters or marketing copy
+    - Reviewing or writing code
+    - Legal or financial advice
 agents:
   - key: ivo
     name: Ivo
@@ -64,11 +76,43 @@ playbooks:
     steps:
       - agent: ivo
         task: Answer the question with public data and its sources.
+  - key: estudo-precos
+    name: Pricing study
+    description: Where your price should sit, argued from the numbers and double-checked.
+    mode: sequential
+    estimatedHumanMinutes: 300
+    approval: true
+    steps:
+      - agent: ivo
+        task: Collect competitors' public prices, plans and what each includes.
+        kind: research
+      - agent: clara
+        task: Agree on which competitors and price points really compare.
+        kind: discuss
+        with: [ivo]
+      - agent: clara
+        task: Recommend a price range and explain the trade-offs.
+        kind: draft
+      - agent: ivo
+        task: Check every number against its source and flag anything weak.
+        kind: review
+        rounds: 2
 translations:
   pt-BR:
     department: Pesquisa
     name: Pesquisa de mercado
     description: A gente descobre o que o mercado está fazendo e traz os números com fonte.
+    scope:
+      does:
+        - Análise de concorrentes
+        - Tamanho e tendências de mercado
+        - Pesquisa de preços
+        - Segmentos de clientes e personas
+        - Respostas a perguntas de mercado, com fontes
+      doesNot:
+        - Escrever artigos, newsletters ou textos de marketing
+        - Revisar ou escrever código
+        - Orientação jurídica ou financeira
     agents:
       ivo:
         role: Analista de mercado
@@ -108,3 +152,11 @@ translations:
         description: Responde uma pergunta de mercado com fontes, em poucos minutos.
         tasks:
           - Responda a pergunta com dados públicos e as fontes.
+      estudo-precos:
+        name: Estudo de preços
+        description: Onde o seu preço deve ficar, argumentado com números e conferido duas vezes.
+        tasks:
+          - Levante os preços públicos, planos e o que cada concorrente inclui.
+          - Combinem quais concorrentes e faixas de preço realmente se comparam.
+          - Recomende uma faixa de preço e explique os prós e contras.
+          - Confira cada número contra a fonte e aponte o que estiver fraco.

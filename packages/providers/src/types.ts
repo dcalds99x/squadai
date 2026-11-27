@@ -10,7 +10,15 @@ export type CallKind =
   | "chat"
   | "plan"
   | "contribution"
-  | "synthesis";
+  | "synthesis"
+  /** The team lead deciding how to work on a free-form request. */
+  | "triage"
+  /** A short view in a team discussion. */
+  | "discussion"
+  /** Is a request in a team's scope? */
+  | "scope"
+  /** Summing up a team discussion. */
+  | "summary";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -38,6 +46,11 @@ export interface ChatRequest {
     tools?: string[];
     /** Teammates, for coordinator plans. */
     teammates?: { key: string; name: string }[];
+    /** Review steps that may send the draft back: which round this is, and how many there are. */
+    round?: number;
+    rounds?: number;
+    /** A draft that rewrites an earlier version (after review notes or the person's feedback). */
+    rework?: boolean;
     /** Other teams in the office, for handoffs. */
     teams?: { slug: string; name: string }[];
   };

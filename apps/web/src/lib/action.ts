@@ -2,6 +2,7 @@ import "server-only";
 import { WorkError } from "@squadai/engine";
 import { getTranslations } from "next-intl/server";
 import type { Messages } from "@/i18n/messages";
+import { publicDemo } from "./env";
 import { requireOffice } from "./session";
 
 /** What a server action tells its form. Messages are already in the person's language. */
@@ -9,6 +10,13 @@ export interface ActionState {
   ok?: boolean;
   error?: string;
   message?: string;
+  /** Room messages: the agents who are about to answer. */
+  replying?: string[];
+  /** The request is outside the team's work: who could do it instead. */
+  outOfScope?: {
+    reason: string;
+    alternatives: { teamId: string; teamName: string; agentName: string | null }[];
+  };
 }
 
 export type ErrorKey = keyof Messages["errors"];
@@ -29,6 +37,11 @@ export async function requireManager() {
   const office = await requireOffice();
   if (office.workspace.role === "member") throw new ActionError("managerOnly");
   return office;
+}
+
+/** Things a public demo never allows: storing secrets and calling URLs people type. */
+export function refuseInPublicDemo() {
+  if (publicDemo()) throw new ActionError("publicDemo");
 }
 
 /**

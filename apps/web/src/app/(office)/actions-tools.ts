@@ -11,7 +11,13 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
-import { ActionError, type ActionState, attempt, requireManager } from "@/lib/action";
+import {
+  ActionError,
+  type ActionState,
+  attempt,
+  refuseInPublicDemo,
+  requireManager,
+} from "@/lib/action";
 import { getContentText } from "@/lib/content";
 import { enqueueRun } from "@/lib/queue";
 import { getMasterKey, workspaceContext } from "@/lib/secrets";
@@ -94,6 +100,7 @@ async function checkIntegration(
 
 export async function saveIntegrationAction(_: ActionState, form: FormData): Promise<ActionState> {
   return attempt(async () => {
+    refuseInPublicDemo();
     const { user, workspace } = await requireManager();
     const kind = String(form.get("kind")) as "github" | "notion" | "mcp";
     if (!["github", "notion", "mcp"].includes(kind)) throw new ActionError("integrationKind");
@@ -212,6 +219,7 @@ function markdownToNotion(markdown: string): NotionBlock[] {
 
 export async function exportToNotionAction(deliveryId: string): Promise<ActionState> {
   return attempt(async () => {
+    refuseInPublicDemo();
     const { user, workspace } = await requireOffice();
     const db = getDb();
     const [d] = await db

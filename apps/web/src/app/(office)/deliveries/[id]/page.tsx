@@ -6,6 +6,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import { cancelDeliveryAction, deleteDeliveryAction } from "@/app/(office)/actions";
+import { ConfirmAction } from "@/components/confirm-action";
 import { DecisionBar } from "@/components/decision-bar";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Markdown } from "@/components/markdown";
@@ -31,6 +33,7 @@ export default async function DeliveryPage({ params, searchParams }: Props) {
     getTranslations("common"),
     getLocale(),
   ]);
+  const tm = await getTranslations("delivery.manage");
   const money = (micros: number) => (micros === 0 ? t("free") : formatUsdMicros(micros, locale));
   const seconds = (ms: number) => tc("seconds", { seconds: Math.max(1, Math.round(ms / 1000)) });
   const strong = (chunks: ReactNode) => <strong>{chunks}</strong>;
@@ -63,8 +66,8 @@ export default async function DeliveryPage({ params, searchParams }: Props) {
   const totalMs = d.credits.reduce((s, c) => s + c.latencyMs, 0);
 
   return (
-    <div className="flex min-h-screen flex-wrap items-stretch">
-      <main className="flex min-w-0 flex-[999_1_560px] flex-col gap-5 px-6 py-7 sm:px-9">
+    <div className="flex min-h-screen flex-wrap items-stretch lg:min-h-0 lg:flex-1 lg:flex-nowrap lg:overflow-hidden">
+      <main className="flex min-w-0 flex-[999_1_560px] flex-col gap-5 px-6 py-7 sm:px-9 lg:overflow-y-auto">
         <div className="flex items-center justify-between gap-3">
           <Link
             href={`/teams/${d.teamSlug}`}
@@ -83,7 +86,30 @@ export default async function DeliveryPage({ params, searchParams }: Props) {
             </svg>
             {d.teamName}
           </Link>
-          <LiveRefresh teamId={d.teamId} deliveryId={d.id} />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <LiveRefresh teamId={d.teamId} deliveryId={d.id} />
+            {(d.status === "in_progress" || d.status === "awaiting_approval") && (
+              <ConfirmAction
+                label={tm("cancel")}
+                question={tm("cancelQuestion")}
+                detail={tm("cancelDetail")}
+                confirmLabel={tm("cancelConfirm")}
+                keepLabel={tm("keep")}
+                pendingLabel={tm("working")}
+                run={cancelDeliveryAction.bind(null, d.id)}
+              />
+            )}
+            <ConfirmAction
+              danger
+              label={tm("delete")}
+              question={tm("deleteQuestion")}
+              detail={tm("deleteDetail")}
+              confirmLabel={tm("deleteConfirm")}
+              keepLabel={tm("keep")}
+              pendingLabel={tm("working")}
+              run={deleteDeliveryAction.bind(null, d.id)}
+            />
+          </div>
         </div>
 
         <header className="flex flex-wrap items-start justify-between gap-4">
@@ -175,7 +201,7 @@ export default async function DeliveryPage({ params, searchParams }: Props) {
 
       <aside
         aria-label={t("backstage")}
-        className="flex max-w-full flex-[1_1_300px] flex-col gap-6 border-line border-l bg-surface px-5 py-6 lg:max-w-[360px]"
+        className="flex max-w-full flex-[1_1_300px] flex-col gap-6 border-line border-l bg-surface px-5 py-6 lg:max-w-[360px] lg:overflow-y-auto"
       >
         <section className="flex flex-col gap-3">
           <h2 className="font-display text-[17px] font-bold">{t("credits")}</h2>

@@ -16,8 +16,11 @@ import {
 } from "@squadai/engine";
 import { PgBoss } from "pg-boss";
 import { handleHeartbeat } from "./jobs/heartbeat.ts";
+import { startTelemetry } from "./telemetry.ts";
 
 const log = createLogger({ service: "worker" });
+// Before anything else, so every span has a tracer to go to.
+const telemetry = startTelemetry(log);
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -78,6 +81,7 @@ async function shutdown(signal: string) {
   log.info("stopping", { signal });
   // Lets in-flight jobs finish; anything cut off resumes from its last step.
   await boss.stop({ graceful: true, timeout: 30_000 });
+  await telemetry?.shutdown();
   await db.close();
   log.info("stopped");
   process.exit(0);

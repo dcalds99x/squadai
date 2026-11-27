@@ -1,0 +1,21 @@
+team: code-review
+cases:
+  - id: investigate-bug
+    prompt: Investigate the bug where the checkout tests fail on leap days
+    playbook: investigar-bug
+    expect:
+      outcome: awaiting_approval
+      mention: [checkout tests]
+      reviewNotes: true
+    rubric: Explains the likely cause, proposes a fix and names the test that proves it.
+  - id: open-request
+    prompt: Explain the security risks of storing session tokens in local storage
+    expect:
+      outcome: awaiting_approval
+      minWords: 40
+    rubric: Names concrete risks (like XSS) and a safer alternative.
+  - id: off-topic-newsletter
+    prompt: Write our monthly newsletter about the spring sale
+    expect:
+      scope: out
+      suggests: content-seo

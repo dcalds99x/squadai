@@ -3,10 +3,12 @@ import type { ToolSpec } from "@squadai/providers";
 import type { ModelContext } from "../models.ts";
 import { builtinTools } from "./builtin.ts";
 import { mcpTools } from "./mcp.ts";
+import { teammateTool } from "./teammate.ts";
 import type { ToolDef } from "./types.ts";
 
 export { BUILTIN_TOOLS, type BuiltinTool } from "./builtin.ts";
 export * from "./mcp.ts";
+export { ASK_TEAMMATE } from "./teammate.ts";
 export * from "./types.ts";
 
 /**
@@ -17,8 +19,14 @@ export function workspaceTools(
   models: ModelContext,
   otherTeams: { slug: string; name: string }[],
   locale: Locale,
+  /** The agent's teammates, during a run. Left out when listing tools on a profile. */
+  teammates?: { key: string; name: string }[],
 ): ToolDef[] {
-  return [...builtinTools(models, otherTeams, locale), ...mcpTools(models.integrations, locale)];
+  return [
+    ...builtinTools(models, otherTeams, locale),
+    teammateTool(teammates, locale),
+    ...mcpTools(models.integrations, locale),
+  ];
 }
 
 export interface OfferedTool {

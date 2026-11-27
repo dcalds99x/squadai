@@ -68,14 +68,16 @@
       "github_read": "Ler o GitHub",
       "github_comment": "Comentar no GitHub",
       "request_help": "Pedir ajuda a outro time",
-      "github_merge": "Fazer merge no GitHub"
+      "github_merge": "Fazer merge no GitHub",
+      "ask_teammate": "Perguntar a um colega"
     },
     "unavailable": {
       "web_search": "Conecte a Anthropic em Modelos e custos para pesquisar na web.",
       "github_read": "Indisponível no momento.",
       "github_comment": "Conecte o GitHub em Integrações para comentar.",
       "request_help": "Contrate outro time para que eles possam se ajudar.",
-      "github_merge": "Por segurança, squadai não faz merge."
+      "github_merge": "Por segurança, squadai não faz merge.",
+      "ask_teammate": "Funciona quando o time tem mais de uma pessoa."
     },
     "mcp": "{server}: {tool}"
   },
@@ -161,7 +163,17 @@
     "retrying": "Tentando…",
     "retry": "Tentar de novo",
     "howWeWork": "Como trabalhamos",
-    "youApprove": "Você aprova"
+    "youApprove": "Você aprova",
+    "openRequest": "Qualquer coisa da nossa área",
+    "openRequestHint": "Descreva o que você precisa. {lead} lê o pedido e decide quem faz o quê, e em que ordem.",
+    "remove": {
+      "label": "Remover time",
+      "question": "Remover {team}?",
+      "detail": "As pessoas, a sala e todas as entregas são excluídas. Você pode contratar o time de novo depois, do zero. Não dá para desfazer.",
+      "confirm": "Remover time",
+      "keep": "Manter time",
+      "working": "Removendo…"
+    }
   },
   "room": {
     "label": "Sala do time",
@@ -175,7 +187,12 @@
     "composerPlaceholder": "Fale com o time…",
     "send": "Enviar",
     "mentionHint": "Use @ para chamar alguém.",
-    "mentionHintExample": "Use @ para chamar alguém, como @{example}."
+    "mentionHintExample": "Use @ para chamar alguém, como @{example}.",
+    "typing": "{name} está digitando…",
+    "sending": "enviando…",
+    "workingOn": "{name} está trabalhando: {task}",
+    "newMessages": "{count, plural, one {# mensagem nova} other {# mensagens novas}}",
+    "leadAnswers": "Quem lidera o time responde. Use @ para chamar outra pessoa, como @{example}."
   },
   "delivery": {
     "fallbackTitle": "Entrega",
@@ -195,7 +212,19 @@
     "thread": "Conversa sobre esta entrega",
     "download": "Baixar .md",
     "toNotion": "Enviar ao Notion",
-    "openNotion": "Abrir no Notion ↗"
+    "openNotion": "Abrir no Notion ↗",
+    "manage": {
+      "cancel": "Cancelar",
+      "cancelQuestion": "Cancelar esta entrega?",
+      "cancelDetail": "O time para de trabalhar nela e ela sai do quadro. O que já foi escrito continua nesta página.",
+      "cancelConfirm": "Cancelar entrega",
+      "delete": "Excluir",
+      "deleteQuestion": "Excluir esta entrega?",
+      "deleteDetail": "As versões, notas e a conversa também são excluídas. Não dá para desfazer.",
+      "deleteConfirm": "Excluir de vez",
+      "keep": "Manter",
+      "working": "Fazendo…"
+    }
   },
   "decision": {
     "label": "Sua decisão",
@@ -225,15 +254,27 @@
     "deliveryContext": "{team} · {kind} · esperando há {age}",
     "review": "Revisar",
     "deny": "Não permitir",
-    "allow": "Permitir"
+    "allow": "Permitir",
+    "checkpoint": "<strong>{agent}</strong> quer o seu OK antes de o time seguir",
+    "continue": "Seguir",
+    "stop": "Parar aqui"
   },
   "requestForm": {
     "placeholder": "Descreva do jeito que você falaria com um colega. Ex.: um artigo sobre energia solar para donos de casa, tom leve.",
     "noTeams": "Contrate um time para fazer o primeiro pedido.",
     "whatYouNeed": "O que você precisa?",
     "team": "Time",
-    "kind": "Tipo de entrega",
-    "submit": "Pedir ao time"
+    "kind": "Tipo de entrega (opcional)",
+    "submit": "Pedir ao time",
+    "teamDecides": "O time decide",
+    "teamDecidesHint": "Peça qualquer coisa da área do time. Quem lidera lê o pedido e decide quem faz o quê.",
+    "outOfScope": {
+      "title": "Isso foge do que o time {team} faz.",
+      "tryInstead": "Envie para:",
+      "sendTo": "{team}",
+      "sendToAgent": "{team} · {agent}",
+      "noTeam": "Nenhum time do seu escritório faz isso ainda. Você pode contratar um em Contratar time."
+    }
   },
   "newRequest": {
     "title": "Novo pedido",
@@ -309,7 +350,7 @@
     },
     "otherProvider": "Outro provedor",
     "tiersTitle": "Modelos por perfil",
-    "tiersIntro": "Cada agente tem um perfil. Aqui você escolhe qual modelo cada perfil usa, no formato provedor:modelo.",
+    "tiersIntro": "Todo agente tem um perfil. Escolha o modelo de cada perfil entre os provedores que você conectou.",
     "budget": "Orçamento do mês",
     "noLimit": "sem limite definido",
     "ofLimit": "de {limit}",
@@ -342,7 +383,10 @@
     "none": "nenhum",
     "saveModels": "Salvar modelos",
     "monthlyLimit": "Limite mensal (US$)",
-    "noLimitPlaceholder": "sem limite"
+    "noLimitPlaceholder": "sem limite",
+    "modelCount": "{count, plural, =0 {nenhum modelo listado} one {# modelo} other {# modelos}}",
+    "refreshModels": "Atualizar modelos",
+    "refreshing": "Atualizando…"
   },
   "integrations": {
     "title": "Integrações",
@@ -445,7 +489,8 @@
     "allowed": "Permitido.",
     "refused": "Recusado.",
     "integrationConnected": "Conectado.",
-    "integrationTools": "Conectado. {count, plural, one {# ferramenta encontrada} other {# ferramentas encontradas}}."
+    "integrationTools": "Conectado. {count, plural, one {# ferramenta encontrada} other {# ferramentas encontradas}}.",
+    "deliveryCancelled": "Cancelado. O time parou de trabalhar nisso."
   },
   "errors": {
     "generic": "Algo deu errado. Tente de novo.",
@@ -475,7 +520,8 @@
     "nothingToExport": "Ainda não há texto para exportar.",
     "connectNotion": "Conecte o Notion em Integrações para exportar.",
     "notionRefused": "O Notion recusou ({status}). A página está compartilhada com a integração?",
-    "unknownLocale": "Esse idioma não está disponível."
+    "unknownLocale": "Esse idioma não está disponível.",
+    "publicDemo": "Esta é uma demonstração pública, então não guarda chaves nem se conecta a outros sistemas. Rode a sua própria cópia para isso."
   },
   "workErrors": {
     "no_room": "Este time não tem sala.",
@@ -490,6 +536,36 @@
     "feedback_too_short": "Diga o que você quer mudar.",
     "empty_message": "Escreva uma mensagem.",
     "team_not_found": "Time não encontrado.",
-    "message_not_sent": "Não consegui enviar a mensagem."
+    "message_not_sent": "Não consegui enviar a mensagem.",
+    "delivery_closed": "Esta entrega já foi concluída ou cancelada."
+  },
+  "modelPicker": {
+    "provider": "Provedor",
+    "model": "Modelo",
+    "none": "Nenhum",
+    "chooseProvider": "Escolha um provedor",
+    "notConnected": "{provider} (não conectado)",
+    "noModels": "Nenhum modelo listado",
+    "custom": "Outro…",
+    "customPlaceholder": "id do modelo",
+    "fromList": "Da lista"
+  },
+  "flow": {
+    "kinds": {
+      "research": "Pesquisa",
+      "draft": "Escreve",
+      "review": "Revisa",
+      "discuss": "Conversam",
+      "checkpoint": "Você confirma",
+      "plan": "Planeja",
+      "parallel": "Em paralelo",
+      "combine": "Junta tudo",
+      "decides": "Escolhe os passos"
+    },
+    "loop": "volta para {name}, até {rounds} rodadas",
+    "approve": "Você aprova"
+  },
+  "publicDemo": {
+    "banner": "Demonstração pública: os times respondem com texto de exemplo, sem custo. Rode a sua própria cópia para conectar modelos de verdade."
   }
 }

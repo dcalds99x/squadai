@@ -32,6 +32,8 @@ export const providerCredential = pgTable(
     /** Last characters of the key, for display ("…a1b2"). */
     keyHint: text(),
     baseUrl: text(),
+    /** Models the provider offered at the last check, for the model picker. */
+    models: text().array().notNull().default([]),
     lastCheckedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
   },

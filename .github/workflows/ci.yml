@@ -49,7 +49,60 @@ jobs:
         run: pnpm db:migrate
       - name: Tests (including Postgres integration tests)
         run: pnpm test
+      - name: Team evals (demo model, rule checks)
+        run: pnpm evals
+        env:
+          EVAL_DEMO: "1"
       - run: pnpm build
+      - name: Install Playwright's Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests (sign-up → request → approval → permission)
+        run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+
+  evals-judged:
+    name: Team evals with real models and an AI judge
+    runs-on: ubuntu-latest
+    needs: check
+    # Costs a few cents per run, so only on main and only when the key is set.
+    if: github.ref == 'refs/heads/main'
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: squadai
+          POSTGRES_PASSWORD: squadai
+          POSTGRES_DB: squadai
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U squadai"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://squadai:squadai@localhost:5432/squadai
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - name: Evals (skipped without the ANTHROPIC_API_KEY secret)
+        if: env.ANTHROPIC_API_KEY != ''
+        run: pnpm evals
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: evals-report
+          path: packages/evals/evals-report.md
 
   docker:
     name: Docker images

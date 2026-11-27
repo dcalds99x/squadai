@@ -1,0 +1,22 @@
+{
+  "name": "@squadai/example-orders-mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Example MCP connector from the Pedal & Co. case study: read-only orders and returns.",
+  "scripts": {
+    "start": "node src/server.ts",
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@squadai/catalog": "workspace:*",
+    "@squadai/engine": "workspace:*",
+    "vitest": "^5.1.2",
+    "yaml": "^2.9.1"
+  }
+}

@@ -1,9 +1,12 @@
 export * from "./events.ts";
+export * from "./flow.ts";
 export * from "./handoffs.ts";
+export * from "./manage.ts";
 export * from "./models.ts";
 export * from "./reply.ts";
 export * from "./router.ts";
 export * from "./runner.ts";
+export * from "./scope.ts";
 export * from "./tools/index.ts";
 export * from "./work.ts";
 

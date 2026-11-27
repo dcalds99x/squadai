@@ -39,8 +39,12 @@ function languageModel(model: string, credentials: ProviderCredentials): Languag
   }
 }
 
+/** OpenAI reasoning models take an effort, not a temperature, and spend tokens thinking. */
+const OPENAI_REASONING = /^(o\d|gpt-5|gpt-6)/i;
+
 export function createAiSdkModel(model: string, credentials: ProviderCredentials): ChatModel {
   const lm = languageModel(model, credentials);
+  const reasoning = credentials.provider === "openai" && OPENAI_REASONING.test(model);
   return {
     provider: credentials.provider,
     model,
@@ -52,8 +56,11 @@ export function createAiSdkModel(model: string, credentials: ProviderCredentials
           { role: "user" as const, content: request.prompt },
           ...(request.continuation ?? []).map((t) => ({ role: t.role, content: t.content })),
         ],
-        temperature: TEMPERATURE[request.style],
-        maxOutputTokens: request.maxOutputTokens ?? 8000,
+        ...(reasoning
+          ? { providerOptions: { openai: { reasoningEffort: request.effort } } }
+          : { temperature: TEMPERATURE[request.style] }),
+        // Room for reasoning plus a full deliverable.
+        maxOutputTokens: request.maxOutputTokens ?? 16000,
       });
       return {
         text: result.text.trim(),

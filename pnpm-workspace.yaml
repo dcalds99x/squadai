@@ -1,5 +1,10 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "examples/*/*"
 onlyBuiltDependencies:
   - esbuild
+# One OpenTelemetry API for the whole workspace: spans only connect when every
+# package talks to the same API instance, and the 2.x SDK requires < 1.10.
+overrides:
+  "@opentelemetry/api": "1.9.1"

@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "typecheck": "turbo run typecheck && tsc -p scripts/tsconfig.json",
+    "typecheck": "turbo run typecheck && tsc -p scripts/tsconfig.json && tsc -p e2e/tsconfig.json",
     "test": "turbo run test",
     "lint": "biome ci .",
     "format": "biome check --write .",
@@ -20,10 +20,13 @@
     "db:up": "docker compose up -d postgres",
     "db:generate": "pnpm --filter @squadai/db generate",
     "db:migrate": "pnpm --filter @squadai/db migrate",
-    "screenshots": "node scripts/screenshots.ts"
+    "screenshots": "node scripts/screenshots.ts",
+    "evals": "pnpm --filter @squadai/evals evals",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",
+    "@playwright/test": "~1.65.1",
     "@types/node": "^24.0.0",
     "playwright-core": "^1.65.1",
     "turbo": "^2.11.13",

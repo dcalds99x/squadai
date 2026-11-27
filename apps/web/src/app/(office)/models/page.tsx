@@ -1,31 +1,16 @@
-import {
-  DEFAULT_TIER_MODELS,
-  MODEL_TIERS,
-  PROVIDERS,
-  type Provider,
-  workspaceLocale,
-} from "@squadai/core";
+import { DEFAULT_TIER_MODELS, MODEL_TIERS, PROVIDERS, workspaceLocale } from "@squadai/core";
 import { getDb, getModelsPage, getOfficeMetrics } from "@squadai/db";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getContentText } from "@/lib/content";
 import { formatMoney, formatUsdMicros } from "@/lib/format";
+import { modelOptions, PROVIDER_BRANDS } from "@/lib/model-options";
 import { requireOffice } from "@/lib/session";
 import { BudgetForm, DemoToggle, ProviderCard, TierForm, WorkspaceLocale } from "./forms";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("models"))("title") };
 }
-
-/** Brand names stay as they are; what each provider offers is translated. */
-const PROVIDER_BRANDS: Record<Provider, { name: string | null; initial: string; bg: string }> = {
-  anthropic: { name: "Anthropic", initial: "A", bg: "#F3E7DA" },
-  openai: { name: "OpenAI", initial: "O", bg: "#DCF5E8" },
-  google: { name: "Google", initial: "G", bg: "#DCEBFF" },
-  openrouter: { name: "OpenRouter", initial: "R", bg: "#FDE2EF" },
-  ollama: { name: "Ollama", initial: "L", bg: "#EEF0F6" },
-  "openai-compatible": { name: null, initial: "+", bg: "#F4F5FA" },
-};
 
 export default async function ModelsPage() {
   const { workspace } = await requireOffice();
@@ -71,7 +56,14 @@ export default async function ModelsPage() {
                 }}
                 canEdit={canEdit}
                 connected={
-                  cred ? { id: cred.id, keyHint: cred.keyHint, baseUrl: cred.baseUrl } : null
+                  cred
+                    ? {
+                        id: cred.id,
+                        keyHint: cred.keyHint,
+                        baseUrl: cred.baseUrl,
+                        models: cred.models.length,
+                      }
+                    : null
                 }
               />
             );
@@ -88,6 +80,7 @@ export default async function ModelsPage() {
         </div>
         <TierForm
           canEdit={canEdit}
+          options={modelOptions(page.credentials, t("otherProvider"))}
           tiers={MODEL_TIERS.map((tier) => ({
             tier,
             label: tTiers(tier),

@@ -1,15 +1,69 @@
 /**
- * When someone @mentions an agent in the room, the agent answers in character.
+ * When someone writes in the room, the agent they @mention (or the team lead)
+ * answers in character, knowing where the team's work stands.
  */
 import { createLogger, type Logger, resolveAgentModels, workspaceLocale } from "@squadai/core";
 import { type DbOrTx, schema } from "@squadai/db";
 import { friendlyError, generateWithFallback } from "@squadai/providers";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { notify } from "./events.ts";
 import type { ModelContext } from "./models.ts";
+import { scopeInstructions } from "./scope.ts";
 import { wordsFor } from "./words.ts";
 
-const { agent, llmCall, message, room, team, user } = schema;
+const { agent, delivery, deliveryVersion, llmCall, message, request, room, run, team, user } =
+  schema;
+
+const STATUS: Record<string, string> = {
+  in_progress: "the team is working on it",
+  awaiting_approval: "ready for the person to review and approve",
+  delivered: "approved and delivered",
+  cancelled: "closed without a delivery",
+};
+
+/**
+ * What the team has on its plate, so an agent can answer "what's done so far?"
+ * truthfully. Written for the model; it answers in the workspace language.
+ */
+async function workStatus(db: DbOrTx, teamId: string): Promise<string> {
+  const rows = await db
+    .select({
+      id: delivery.id,
+      title: delivery.title,
+      kind: delivery.kind,
+      status: delivery.status,
+      requestStatus: request.status,
+      error: sql<
+        string | null
+      >`(select ${run.error} from ${run} where ${run.requestId} = ${request.id} order by ${run.createdAt} desc limit 1)`,
+    })
+    .from(delivery)
+    .innerJoin(request, eq(request.id, delivery.requestId))
+    .where(eq(delivery.teamId, teamId))
+    .orderBy(desc(delivery.createdAt))
+    .limit(5);
+  const lines: string[] = [];
+  for (const row of rows) {
+    const [latest] = await db
+      .select({ n: deliveryVersion.number, content: deliveryVersion.content })
+      .from(deliveryVersion)
+      .where(eq(deliveryVersion.deliveryId, row.id))
+      .orderBy(desc(deliveryVersion.number))
+      .limit(1);
+    const state =
+      row.requestStatus === "failed"
+        ? `stuck: ${row.error ?? "an error"}`
+        : row.requestStatus === "waiting" && row.status === "in_progress"
+          ? "paused, waiting for the person's OK in Waiting on you"
+          : (STATUS[row.status] ?? row.status);
+    lines.push(
+      `- "${row.title}" (${row.kind}): ${state}; ${latest ? `${latest.n} version(s)` : "no version yet"}.`,
+    );
+    if (latest && rows.indexOf(row) === 0)
+      lines.push(`  Latest version starts: ${latest.content.replace(/\s+/g, " ").slice(0, 500)}`);
+  }
+  return lines.join("\n");
+}
 
 export async function replyInRoom(
   deps: { db: DbOrTx; loadModels: (workspaceId: string) => Promise<ModelContext>; log?: Logger },
@@ -31,6 +85,7 @@ export async function replyInRoom(
       teamId: agent.teamId,
       workspaceId: agent.workspaceId,
       teamName: team.name,
+      scope: team.scope,
     })
     .from(agent)
     .innerJoin(team, eq(team.id, agent.teamId))
@@ -43,6 +98,10 @@ export async function replyInRoom(
   const { settings, factory } = await deps.loadModels(who.workspaceId);
   const locale = workspaceLocale(settings);
   const words = wordsFor(locale);
+  const otherTeams = await db
+    .select({ name: team.name })
+    .from(team)
+    .where(and(eq(team.workspaceId, who.workspaceId), ne(team.id, who.teamId)));
 
   const recent = await db
     .select({ body: message.body, agentName: agent.name, userName: user.name })
@@ -62,11 +121,15 @@ export async function replyInRoom(
     const result = await generateWithFallback(
       resolveAgentModels(who, settings),
       {
-        system: `${who.instructions}\n\n${words.prompt.chatSystem(who.name, who.role, who.teamName)}`,
-        prompt: words.prompt.chat(transcript),
+        system: [
+          who.instructions,
+          words.prompt.chatSystem(who.name, who.role, who.teamName),
+          scopeInstructions(words, who.scope, otherTeams),
+        ].join("\n\n"),
+        prompt: words.prompt.chat(transcript, await workStatus(db, who.teamId)),
         style: who.style,
         effort: "low",
-        maxOutputTokens: 1000,
+        maxOutputTokens: 1500,
         hint: { agentName: who.name, kind: "chat", topic: "", locale },
       },
       factory,

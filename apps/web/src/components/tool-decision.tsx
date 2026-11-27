@@ -4,7 +4,14 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { decideToolAction } from "@/app/(office)/actions-tools";
 
-export function ToolDecision({ approvalId }: { approvalId: string }) {
+/** Allow / don't allow a tool, or (for a checkpoint) go on / stop here. */
+export function ToolDecision({
+  approvalId,
+  checkpoint = false,
+}: {
+  approvalId: string;
+  checkpoint?: boolean;
+}) {
   const t = useTranslations("waiting");
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +29,7 @@ export function ToolDecision({ approvalId }: { approvalId: string }) {
           onClick={() => decide(false)}
           className="h-11 rounded-xl border border-line-strong bg-surface px-4 text-sm font-semibold disabled:opacity-60"
         >
-          {t("deny")}
+          {checkpoint ? t("stop") : t("deny")}
         </button>
         <button
           type="button"
@@ -30,7 +37,7 @@ export function ToolDecision({ approvalId }: { approvalId: string }) {
           onClick={() => decide(true)}
           className="h-11 rounded-xl bg-brand px-4 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {pending ? "…" : t("allow")}
+          {pending ? "…" : checkpoint ? t("continue") : t("allow")}
         </button>
       </div>
       {error && (

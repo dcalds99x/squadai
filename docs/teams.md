@@ -10,6 +10,14 @@ department: Support # sidebar group; created if it does not exist
 name: Support replies
 description: We answer your customers politely and consistently.
 color: "#CA8A04"
+lead: gabi # who plans free-form requests (default: the first agent)
+scope: # what the team does and doesn't do; off-topic requests go elsewhere
+  does:
+    - Replies to customer questions
+    - Help-center articles
+  doesNot:
+    - Refunds or account changes
+    - Legal advice
 
 agents:
   - key: gabi
@@ -46,6 +54,33 @@ pnpm catalog:generate   # validates and regenerates src/generated.ts
 pnpm test --filter @squadai/catalog
 ```
 
+## How the team works: flows
+
+Steps in a sequential playbook can say what kind of work they are. Leave `kind` out and the position decides (first = research, last of three or more = review, the rest = draft).
+
+```yaml
+steps:
+  - agent: lia
+    task: Collect the customer's context and the numbers.
+    kind: research
+  - agent: teo
+    task: Agree on the story's angle.
+    kind: discuss
+    with: [lia, bia] # teammates who join the conversation
+  - agent: teo
+    task: Confirm the angle with you before writing.
+    kind: checkpoint # the team waits for the person's OK
+  - agent: teo
+    task: Write the case study.
+    kind: draft
+  - agent: bia
+    task: Check every claim and polish the copy.
+    kind: review
+    rounds: 2 # may send the draft back to the writer once
+```
+
+People can also ask for anything without picking a playbook. Then the team's `lead` plans the steps for that request, using the same kinds. Write the `scope` so the lead and the scope check know what is in and out.
+
 Write the persona the way a teammate would introduce themselves. The bio, "prefers" and "never" appear on the agent's profile, so people learn how to work with the agent.
 
 ## Translations
@@ -67,6 +102,9 @@ translations:
         never: Prometer algo que a política não permite.
         instructions: |
           Você é a Gabi, do atendimento. ...
+    scope: # optional; the template's own scope is used without it
+      does: [Respostas a dúvidas de clientes, Artigos da central de ajuda]
+      doesNot: [Reembolsos ou mudanças de conta, Orientação jurídica]
     playbooks:
       reply-to-customer: # one entry per playbook key
         name: Responder um cliente

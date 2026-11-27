@@ -130,6 +130,8 @@ export async function getTeamBoard(db: DbOrTx, workspaceId: string, slug: string
       name: team.name,
       description: team.description,
       color: team.color,
+      leadKey: team.leadKey,
+      scope: team.scope,
       department: department.name,
       roomId: room.id,
     })
@@ -158,6 +160,8 @@ export async function getTeamBoard(db: DbOrTx, workspaceId: string, slug: string
         key: playbook.key,
         name: playbook.name,
         description: playbook.description,
+        mode: playbook.mode,
+        requiresApproval: playbook.requiresApproval,
         steps: playbook.steps,
       })
       .from(playbook)
@@ -365,6 +369,7 @@ export async function getModelsPage(db: DbOrTx, workspaceId: string) {
         label: providerCredential.label,
         keyHint: providerCredential.keyHint,
         baseUrl: providerCredential.baseUrl,
+        models: providerCredential.models,
         lastCheckedAt: providerCredential.lastCheckedAt,
       })
       .from(providerCredential)
@@ -390,4 +395,16 @@ export async function getModelsPage(db: DbOrTx, workspaceId: string) {
     budget: limits[0] ?? null,
     spendByTeam,
   };
+}
+
+/** Connected providers and the models each offered at its last check, for model pickers. */
+export async function getModelOptions(
+  db: DbOrTx,
+  workspaceId: string,
+): Promise<{ provider: string; models: string[] }[]> {
+  return db
+    .select({ provider: providerCredential.provider, models: providerCredential.models })
+    .from(providerCredential)
+    .where(eq(providerCredential.workspaceId, workspaceId))
+    .orderBy(asc(providerCredential.createdAt));
 }

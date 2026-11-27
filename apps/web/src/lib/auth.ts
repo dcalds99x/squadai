@@ -5,7 +5,8 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { localeFromHeaders } from "@/i18n/locale";
-import { env, githubEnabled } from "./env";
+import { seedDemoOffice } from "./demo";
+import { env, githubEnabled, publicDemo } from "./env";
 
 const log = createLogger({ service: "web", module: "auth" });
 
@@ -39,12 +40,15 @@ function createAuth() {
         create: {
           // Every new person gets an office with the starter team, in their language.
           after: async (user, context) => {
+            const demo = publicDemo();
             const { workspaceId } = await createWorkspaceForUser(db, {
               userId: user.id,
               userName: user.name,
               locale: localeFromHeaders(context?.headers ?? context?.request?.headers),
+              demo,
             });
-            log.info("workspace created", { userId: user.id, workspaceId });
+            if (demo) await seedDemoOffice(workspaceId, user.id);
+            log.info("workspace created", { userId: user.id, workspaceId, demo });
           },
         },
       },

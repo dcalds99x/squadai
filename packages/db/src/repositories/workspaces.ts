@@ -1,4 +1,4 @@
-import { getTeamTemplate, STARTER_TEAM_ID } from "@squadai/catalog";
+import { getTeamTemplate, listTeamTemplates, STARTER_TEAM_ID } from "@squadai/catalog";
 import type { Locale } from "@squadai/core";
 import { eq } from "drizzle-orm";
 import type { DbOrTx } from "../client.ts";
@@ -31,7 +31,13 @@ export function displayOfficeName(stored: string, locale: Locale): string {
  */
 export async function createWorkspaceForUser(
   db: DbOrTx,
-  input: { userId: string; userName: string; locale: Locale },
+  input: {
+    userId: string;
+    userName: string;
+    locale: Locale;
+    /** Public demo: demo mode on and every catalog team hired, so there is something to see. */
+    demo?: boolean;
+  },
 ): Promise<{ workspaceId: string }> {
   return db.transaction(async (tx) => {
     const firstName = input.userName.trim().split(/\s+/)[0] ?? "";
@@ -40,7 +46,7 @@ export async function createWorkspaceForUser(
       .values({
         name: OFFICE_NAME[input.locale](firstName),
         slug: `${slugify(firstName)}-${crypto.randomUUID().slice(0, 8)}`,
-        settings: { locale: input.locale },
+        settings: { locale: input.locale, ...(input.demo ? { demoMode: true } : {}) },
       })
       .returning({ id: workspace.id });
     if (!created) throw new Error("Could not create workspace.");
@@ -62,6 +68,12 @@ export async function createWorkspaceForUser(
       template: getTeamTemplate(STARTER_TEAM_ID),
       hiredBy: input.userId,
     });
+    if (input.demo) {
+      for (const template of listTeamTemplates()) {
+        if (template.id === STARTER_TEAM_ID) continue;
+        await hireTeam(tx, { workspaceId: created.id, template, hiredBy: input.userId });
+      }
+    }
     return { workspaceId: created.id };
   });
 }

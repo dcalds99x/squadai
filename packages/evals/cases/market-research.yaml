@@ -1,0 +1,22 @@
+team: market-research
+cases:
+  - id: competitor-analysis
+    prompt: Competitor analysis of meal-kit delivery services
+    playbook: analise-concorrentes
+    expect:
+      outcome: awaiting_approval
+      mention: [meal-kit delivery services]
+      minWords: 40
+    rubric: Compares named competitors in a table and ends with where the client can stand out.
+  - id: quick-research
+    prompt: How big is the market for electric cargo bikes?
+    playbook: pesquisa-rapida
+    expect:
+      outcome: delivered
+      minWords: 20
+    rubric: Answers the question with figures and says where each figure comes from.
+  - id: off-topic-blog
+    prompt: Write a blog post with tips for new runners
+    expect:
+      scope: out
+      suggests: content-seo

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getUserLocale } from "@/i18n/locale";
 import { getAuth } from "./auth";
+import { publicDemo } from "./env";
 
 /**
  * The signed-in person and their office. Redirects to /sign-in when signed out.
@@ -22,6 +23,7 @@ export const requireOffice = cache(async () => {
       userId: session.user.id,
       userName: session.user.name,
       locale: await getUserLocale(),
+      demo: publicDemo(),
     });
     workspace = await getPrimaryWorkspace(db, session.user.id);
   }
