@@ -20,10 +20,10 @@ export default async function WaitingPage() {
     kind: text.c(p.kind),
   }));
   return (
-    <main className="mx-auto flex max-w-[900px] flex-col gap-6 px-6 py-9 sm:px-11">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[34px] font-bold tracking-tight">{t("title")}</h1>
+    <main className="page">
+      <header className="page-header items-end">
+        <div className="page-heading">
+          <h1 className="page-title">{t("title")}</h1>
           <p className="text-muted">
             {pending.length === 0 ? t("allClear") : t("count", { count: pending.length })}
           </p>

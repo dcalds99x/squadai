@@ -184,6 +184,24 @@
   }
 }
 
+/* The caret at the end of text an agent is still writing. */
+.stream-caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  border-radius: 1px;
+  background: var(--color-brand);
+  animation: caret 1s steps(2, start) infinite;
+}
+
+@keyframes caret {
+  to {
+    visibility: hidden;
+  }
+}
+
 @keyframes msg-in {
   from {
     opacity: 0;
@@ -212,5 +230,68 @@
   .msg-in,
   .typing-dot {
     animation: none;
+  }
+}
+
+/*
+ * The one grid every page uses (docs/design/grid.md):
+ * a 1200 px container, 20 px side padding on phones and 32 px from 640 px,
+ * 24 px between blocks, one title size.
+ */
+@layer components {
+  .page {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    box-sizing: border-box;
+    padding: 28px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  @media (min-width: 640px) {
+    .page {
+      padding: 32px 32px 48px;
+    }
+  }
+  .page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .page-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 360px;
+  }
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+  .page-intro {
+    max-width: 64ch;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--color-muted);
+  }
+  .page-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-subtle);
+  }
+  /* Content narrower than the container (forms), still aligned to its left edge. */
+  .page-narrow {
+    width: 100%;
+    max-width: 760px;
   }
 }

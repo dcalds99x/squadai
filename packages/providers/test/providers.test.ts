@@ -201,3 +201,20 @@ describe("chatModels", () => {
     ).toEqual(["gpt-5.5", "gpt-5.5-mini"]);
   });
 });
+
+describe("streaming", () => {
+  it("the demo model streams pieces that add up to its answer", async () => {
+    const model = createDemoModel();
+    const pieces: string[] = [];
+    const out = await model.generate({
+      system: "",
+      prompt: "A blog post about compost",
+      style: "balanced",
+      effort: "low",
+      hint: { agentName: "Téo", kind: "draft", topic: "A blog post about compost", locale: "en" },
+      onDelta: (text) => pieces.push(text),
+    });
+    expect(pieces.length).toBeGreaterThan(5);
+    expect(pieces.join("")).toBe(out.text);
+  });
+});

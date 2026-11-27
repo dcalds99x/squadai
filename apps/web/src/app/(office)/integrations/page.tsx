@@ -31,10 +31,10 @@ export default async function IntegrationsPage() {
   const mcp = rows.filter((r) => r.kind === "mcp");
 
   return (
-    <main className="mx-auto flex max-w-[1000px] flex-col gap-7 px-6 py-9 sm:px-11">
-      <header className="flex max-w-2xl flex-col gap-2">
-        <h1 className="font-display text-[30px] font-bold tracking-tight">{t("title")}</h1>
-        <p className="text-muted">{t("intro")}</p>
+    <main className="page">
+      <header className="page-heading">
+        <h1 className="page-title">{t("title")}</h1>
+        <p className="page-intro">{t("intro")}</p>
       </header>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">

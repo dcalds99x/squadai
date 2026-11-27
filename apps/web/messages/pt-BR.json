@@ -33,7 +33,12 @@
     "models": "Modelos e custos",
     "integrations": "Integrações",
     "audit": "Auditoria",
-    "signOut": "Sair"
+    "signOut": "Sair",
+    "search": "Encontrar um time",
+    "noMatch": "Nenhum time encontrado.",
+    "collapse": "Recolher menu",
+    "expand": "Abrir menu",
+    "working": "trabalhando agora"
   },
   "status": {
     "in_progress": "Em produção",
@@ -192,7 +197,8 @@
     "sending": "enviando…",
     "workingOn": "{name} está trabalhando: {task}",
     "newMessages": "{count, plural, one {# mensagem nova} other {# mensagens novas}}",
-    "leadAnswers": "Quem lidera o time responde. Use @ para chamar outra pessoa, como @{example}."
+    "leadAnswers": "Quem lidera o time responde. Use @ para chamar outra pessoa, como @{example}.",
+    "writing": "escrevendo…"
   },
   "delivery": {
     "fallbackTitle": "Entrega",
@@ -224,7 +230,9 @@
       "deleteConfirm": "Excluir de vez",
       "keep": "Manter",
       "working": "Fazendo…"
-    }
+    },
+    "liveTitle": "{name} está escrevendo",
+    "liveNote": "Ao vivo. A versão pronta aparece aqui quando a etapa terminar."
   },
   "decision": {
     "label": "Sua decisão",

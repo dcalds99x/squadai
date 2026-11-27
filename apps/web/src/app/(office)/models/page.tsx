@@ -29,10 +29,10 @@ export default async function ModelsPage() {
   const totalMicros = page.spendByTeam.reduce((s, t) => s + t.costMicros, 0);
 
   return (
-    <main className="mx-auto flex max-w-[1100px] flex-col gap-8 px-6 py-9 sm:px-11">
-      <header className="flex max-w-2xl flex-col gap-2">
-        <h1 className="font-display text-[34px] font-bold tracking-tight">{t("title")}</h1>
-        <p className="leading-relaxed text-muted">{t("intro")}</p>
+    <main className="page">
+      <header className="page-heading">
+        <h1 className="page-title">{t("title")}</h1>
+        <p className="page-intro">{t("intro")}</p>
       </header>
 
       <DemoToggle on={page.settings.demoMode === true} canEdit={canEdit} />

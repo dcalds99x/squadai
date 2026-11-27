@@ -33,7 +33,12 @@
     "models": "Models & costs",
     "integrations": "Integrations",
     "audit": "Audit log",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "search": "Find a team",
+    "noMatch": "No team matches.",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "working": "working now"
   },
   "status": {
     "in_progress": "In progress",
@@ -192,7 +197,8 @@
     "sending": "sending…",
     "workingOn": "{name} is working: {task}",
     "newMessages": "{count, plural, one {# new message} other {# new messages}}",
-    "leadAnswers": "The team lead answers. Use @ to ask someone else, like @{example}."
+    "leadAnswers": "The team lead answers. Use @ to ask someone else, like @{example}.",
+    "writing": "writing…"
   },
   "delivery": {
     "fallbackTitle": "Delivery",
@@ -224,7 +230,9 @@
       "deleteConfirm": "Delete for good",
       "keep": "Keep it",
       "working": "Working…"
-    }
+    },
+    "liveTitle": "{name} is writing",
+    "liveNote": "Live. The finished version appears here when the step is done."
   },
   "decision": {
     "label": "Your decision",

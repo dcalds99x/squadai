@@ -400,8 +400,18 @@ export function createDemoModel(options: { delayMs?: number } = {}): ChatModel {
     provider: DEMO_PROVIDER,
     model: DEMO_MODEL,
     async generate(request: ChatRequest): Promise<ModelOutput> {
-      if (options.delayMs) await new Promise((r) => setTimeout(r, options.delayMs));
       const text = write(request);
+      if (request.onDelta) {
+        // Streams word by word, spreading the usual delay over the words.
+        const pieces = text.match(/\S+\s*/g) ?? [text];
+        const pause = options.delayMs ? options.delayMs / pieces.length : 0;
+        for (const piece of pieces) {
+          if (pause) await new Promise((r) => setTimeout(r, pause));
+          request.onDelta(piece);
+        }
+      } else if (options.delayMs) {
+        await new Promise((r) => setTimeout(r, options.delayMs));
+      }
       return {
         text,
         inputTokens: estimateTokens(

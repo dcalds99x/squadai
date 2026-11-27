@@ -40,10 +40,10 @@ export default async function AuditPage() {
     .limit(200);
 
   return (
-    <main className="mx-auto flex max-w-[1000px] flex-col gap-6 px-6 py-9 sm:px-11">
-      <header className="flex flex-col gap-2">
-        <h1 className="font-display text-[30px] font-bold tracking-tight">{t("title")}</h1>
-        <p className="text-muted">{t("intro")}</p>
+    <main className="page">
+      <header className="page-heading">
+        <h1 className="page-title">{t("title")}</h1>
+        <p className="page-intro">{t("intro")}</p>
       </header>
       <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
         <table className="w-full min-w-[640px] border-collapse text-sm">

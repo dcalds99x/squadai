@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { subscribeLive, useLiveConnected } from "@/lib/live-events";
 
 /**
  * Keeps a server-rendered page current: listens to office events and asks
@@ -12,31 +13,25 @@ export function LiveRefresh({ teamId, deliveryId }: { teamId?: string; deliveryI
   const t = useTranslations("common");
   const router = useRouter();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [connected, setConnected] = useState(false);
+  const connected = useLiveConnected();
 
   useEffect(() => {
-    const source = new EventSource("/api/events");
-    source.onopen = () => setConnected(true);
-    source.onerror = () => setConnected(false);
-    source.onmessage = (e) => {
-      try {
-        const event = JSON.parse(e.data) as { teamId?: string; deliveryId?: string };
-        if (teamId && event.teamId && event.teamId !== teamId) return;
-        if (
-          deliveryId &&
-          event.deliveryId &&
-          event.deliveryId !== deliveryId &&
-          event.teamId !== teamId
-        )
-          return;
-      } catch {
+    const unsubscribe = subscribeLive((event) => {
+      // Live text is drawn in place; only real changes reload the page.
+      if (event.type === "stream") return;
+      if (teamId && event.teamId && event.teamId !== teamId) return;
+      if (
+        deliveryId &&
+        event.deliveryId &&
+        event.deliveryId !== deliveryId &&
+        event.teamId !== teamId
+      )
         return;
-      }
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => router.refresh(), 250);
-    };
+    });
     return () => {
-      source.close();
+      unsubscribe();
       if (timer.current) clearTimeout(timer.current);
     };
   }, [router, teamId, deliveryId]);

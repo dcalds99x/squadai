@@ -55,7 +55,7 @@ export async function Room({
     <RoomLiveProvider recent={recent} agents={agents}>
       <aside
         aria-label={t("label")}
-        className="flex max-h-[80vh] max-w-full flex-[1_1_340px] flex-col border-line border-l bg-surface lg:max-h-none lg:min-h-0 lg:max-w-[400px]"
+        className="flex max-h-[80vh] max-w-full flex-[1_1_340px] flex-col border-line border-l bg-surface lg:max-h-none lg:min-h-0 lg:w-[360px] lg:max-w-none lg:flex-none"
       >
         <div className="flex flex-col gap-0.5 border-[#EEF0F6] border-b px-5 py-[18px]">
           <strong>{t("label")}</strong>
@@ -65,7 +65,7 @@ export async function Room({
           </span>
         </div>
         {/* Reversed column: the scroll starts at the newest message, like any chat. */}
-        <RoomFeed activity={activity} userName={userName}>
+        <RoomFeed activity={activity} userName={userName} teamId={teamId}>
           {[...messages].reverse().map((m) => (
             <li key={m.id}>
               <MessageItem message={m} timeZone={timeZone} locale={locale} words={words} />

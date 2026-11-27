@@ -100,6 +100,7 @@ export async function generateWithFallback(
   } catch (error) {
     if (!models.fallback || models.fallback === models.primary) throw error;
     try {
+      request.onRestart?.();
       return await attempt(models.fallback, true);
     } catch {
       throw error;

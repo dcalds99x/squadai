@@ -40,7 +40,7 @@ import {
   toolInstructions,
 } from "@squadai/providers";
 import { and, asc, desc, eq, gte, inArray, isNull, lt, max, ne, or, sql } from "drizzle-orm";
-import { notify } from "./events.ts";
+import { createStreamer, notify } from "./events.ts";
 import {
   defaultFlow,
   type FlowStep,
@@ -675,19 +675,37 @@ async function runRequestTraced(deps: RunDeps, input: RunInput): Promise<RunResu
     while (cp.modelCalls < MAX_MODEL_CALLS) {
       await renewLease();
       await checkBudget(db, req.workspaceId);
-      const result = await generateWithFallback(
-        resolveAgentModels(who, models.settings),
-        {
-          system,
-          prompt,
-          continuation: cp.turns,
-          style: who.style,
-          effort: opts.effort ?? EFFORT[who.tier],
-          maxOutputTokens: opts.maxOutputTokens,
-          hint,
-        },
-        models.factory,
-      );
+      // People watch the text appear; plans are JSON for the engine, not for them.
+      const streamer =
+        kind === "triage" || kind === "plan"
+          ? null
+          : createStreamer(db, {
+              workspaceId: req.workspaceId,
+              teamId: req.teamId,
+              requestId: req.id,
+              agentName: who.name,
+              kind,
+            });
+      let result: ChatResult;
+      try {
+        result = await generateWithFallback(
+          resolveAgentModels(who, models.settings),
+          {
+            system,
+            prompt,
+            continuation: cp.turns,
+            style: who.style,
+            effort: opts.effort ?? EFFORT[who.tier],
+            maxOutputTokens: opts.maxOutputTokens,
+            hint,
+            onDelta: streamer?.onDelta,
+            onRestart: streamer?.onRestart,
+          },
+          models.factory,
+        );
+      } finally {
+        await streamer?.done();
+      }
       cp.modelCalls++;
       await record(result, row, who);
 
